@@ -1,0 +1,117 @@
+# Health IBNR Lab assumptions. Every value is synthetic and illustrative. One comment per value.
+# The Methods page reads this file, comments included, so keep each comment on the same line as its value.
+
+seed: 20261114                    # Random seed for the claim generator; the same seed gives the same book
+first_accident_month: 2023-10-01  # First accident month in the book
+n_accident_months: 36             # Accident months in the book, October 2023 to September 2026
+valuation_date: 2026-09-30        # Valuation date; nothing paid or reported after it enters a triangle
+
+members:
+  start:
+    corporate: 9000               # Corporate scheme members in October 2023
+    sme: 3500                     # SME scheme members in October 2023
+    individual: 2000              # Individual policy members in October 2023
+  monthly_growth: 0.005           # Membership growth per month, same for every scheme type
+
+premium:
+  pmpm_kes:
+    corporate: 2600               # Earned premium per member per month in October 2023, corporate, KES
+    sme: 2800                     # Earned premium per member per month in October 2023, SME, KES
+    individual: 3200              # Earned premium per member per month in October 2023, individual, KES
+  annual_rate_increase: 0.08      # Premium rate increase per year, applied smoothly month by month
+
+frequency:
+  claims_per_member_month: 0.11   # Expected claims per member per month before scheme and season effects
+  scheme_relativity:
+    corporate: 1.00               # Claim frequency relativity, corporate schemes
+    sme: 0.95                     # Claim frequency relativity, SME schemes
+    individual: 1.15              # Claim frequency relativity, individual policies (more selection)
+  benefit_mix:
+    outpatient: 0.62              # Share of claim counts that are outpatient
+    inpatient: 0.12               # Share of claim counts that are inpatient
+    maternity: 0.05               # Share of claim counts that are maternity
+    chronic: 0.21                 # Share of claim counts that are chronic medication and reviews
+
+seasonality:
+  jan: 1.10                       # Claim count multiplier, January (after the festive season, schools reopen)
+  feb: 1.00                       # Claim count multiplier, February
+  mar: 1.02                       # Claim count multiplier, March
+  apr: 1.12                       # Claim count multiplier, April (long rains)
+  may: 1.12                       # Claim count multiplier, May (long rains)
+  jun: 1.00                       # Claim count multiplier, June
+  jul: 0.96                       # Claim count multiplier, July
+  aug: 0.94                       # Claim count multiplier, August
+  sep: 0.96                       # Claim count multiplier, September
+  oct: 1.00                       # Claim count multiplier, October
+  nov: 1.06                       # Claim count multiplier, November (short rains)
+  dec: 0.92                       # Claim count multiplier, December (fewer elective visits over the holidays)
+
+severity:
+  median_kes:
+    outpatient: 4500              # Median billed amount, outpatient, October 2023 prices, KES
+    inpatient: 60000              # Median billed amount, inpatient, October 2023 prices, KES
+    maternity: 70000              # Median billed amount, maternity, October 2023 prices, KES
+    chronic: 12000                # Median billed amount, chronic, October 2023 prices, KES
+  sdlog:
+    outpatient: 0.8               # Lognormal spread of billed amounts, outpatient
+    inpatient: 0.9                # Lognormal spread of billed amounts, inpatient
+    maternity: 0.5                # Lognormal spread of billed amounts, maternity
+    chronic: 0.6                  # Lognormal spread of billed amounts, chronic
+  medical_inflation: 0.10         # Severity trend per year, applied by accident month
+  large_claim_prob_inpatient: 0.01  # Chance an inpatient claim is a large claim
+  large_claim_median_kes: 1200000   # Median billed amount of a large claim, October 2023 prices, KES
+  large_claim_sdlog: 0.6          # Lognormal spread of large claim amounts
+
+report_lag_probs:
+  outpatient: [0.55, 0.30, 0.10, 0.04, 0.01]              # Chance an outpatient invoice arrives 0, 1, 2, ... months after the accident month
+  inpatient: [0.30, 0.35, 0.18, 0.09, 0.05, 0.03]         # Chance an inpatient invoice arrives 0, 1, 2, ... months after the accident month
+  maternity: [0.35, 0.35, 0.18, 0.08, 0.04]               # Chance a maternity invoice arrives 0, 1, 2, ... months after the accident month
+  chronic: [0.60, 0.28, 0.08, 0.03, 0.01]                 # Chance a chronic invoice arrives 0, 1, 2, ... months after the accident month
+
+payment_lag_probs:
+  outpatient: [0.10, 0.55, 0.25, 0.07, 0.03]              # Chance an outpatient invoice is paid 0, 1, 2, ... months after it arrives
+  inpatient: [0.05, 0.30, 0.30, 0.15, 0.10, 0.05, 0.03, 0.02]  # Chance an inpatient invoice is paid 0, 1, 2, ... months after it arrives
+  maternity: [0.08, 0.45, 0.30, 0.10, 0.05, 0.02]         # Chance a maternity invoice is paid 0, 1, 2, ... months after it arrives
+  chronic: [0.15, 0.55, 0.20, 0.07, 0.03]                 # Chance a chronic invoice is paid 0, 1, 2, ... months after it arrives
+
+max_payment_lag_months: 12        # Cap on months from accident month to payment; anything later is paid at the cap
+
+settlement_ratio:
+  outpatient: 0.92                # Expected share of the billed amount paid, outpatient (after tariffs and rejections)
+  inpatient: 0.85                 # Expected share of the billed amount paid, inpatient
+  maternity: 0.90                 # Expected share of the billed amount paid, maternity
+  chronic: 0.95                   # Expected share of the billed amount paid, chronic
+settlement_noise_sd: 0.03         # Claim level noise around the settlement ratio, clipped to between 0.5 and 1
+
+methods:
+  bf_elr: 0.78                    # BF prior loss ratio; an assumption, not fitted to this book (published industry context in the README)
+  bf_latest_months: 3             # Selected reserve uses BF for this many latest accident months and chain ladder for the rest
+  elr_slider_min: 0.55            # Lowest ELR on the Reserves page slider
+  elr_slider_max: 0.95            # Highest ELR on the Reserves page slider
+  months_of_claims_window: 12     # Outstanding is expressed as months of the average paid per month over this many months
+
+bootstrap:
+  R: 5000                         # Number of bootstrap replicates
+  process_distr: gamma            # Process distribution in the ODP bootstrap (England and Verrall 2002)
+  seed: 20261115                  # Seed passed to BootChainLadder
+
+backlog:
+  n_months_grid: [1, 2, 3, 4, 5, 6]                       # Slowdown lengths on the grid, in calendar months up to valuation
+  pct_grid: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]             # Share of scheduled payments delayed, on the grid
+  default_n_months: 3             # Slowdown length shown first on the Backlog page
+  default_pct: 0.3                # Share delayed shown first on the Backlog page
+  catch_up_months: 3              # Delayed claims are paid at random within this many months after valuation
+  seed: 20261116                  # Seed for which claims are delayed and when they catch up
+
+diagnostics:
+  ae_fit_gap_months: 6            # A/E expected values use factors fitted only on payments made this many months or more before valuation
+  ae_show_months: 12              # A/E heatmap shows this many latest calendar months
+  ae_max_dev: 8                   # A/E heatmap shows development months up to this one; later cells expect almost nothing
+  pipeline_avg_months: 3          # Pipeline is shown as months of the average paid per month over this many trailing months
+
+ifrs17:
+  curve_terms_years: [0.25, 0.5, 1, 2]                    # Terms of the discount curve, years (illustrative, not a published curve)
+  curve_spot_rates: [0.080, 0.085, 0.095, 0.110]          # Annual spot rates at those terms (illustrative, not a published curve)
+  ra_confidence_default: 0.75     # Risk adjustment confidence level shown first
+  ra_slider_min: 0.60             # Lowest confidence level on the slider
+  ra_slider_max: 0.995            # Highest confidence level on the slider

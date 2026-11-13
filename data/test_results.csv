@@ -1,0 +1,18 @@
+file,test,result,expectations
+test-backlog.R,backlog scenarios leave the true ultimate unchanged,passed,1
+test-backlog.R,a 0% slowdown reproduces the base case chain ladder,passed,1
+test-backlog.R,"delayed claims are only those scheduled in the window, and pay after valuation",passed,4
+test-backlog.R,paid to date falls by exactly the delayed amount,passed,42
+test-headline.R,headline.json matches a fresh recomputation from results.rds,passed,1
+test-hygiene.R,every config value has a comment,passed,2
+test-hygiene.R,no em dashes or en dashes in the repo text files,passed,1
+test-hygiene.R,the app carries the synthetic label,passed,1
+test-methods.R,chain ladder on a fully developed synthetic triangle reproduces the known ultimate,passed,1
+test-methods.R,hand-written chain ladder matches ChainLadder::MackChainLadder,passed,1
+test-methods.R,excluding diagonals matches MackChainLadder weights,passed,2
+test-methods.R,BF with ELR equal to the true loss ratio lands within 10% of the true outstanding,passed,1
+test-methods.R,bootstrap mean is within 2% of the chain ladder reserve,passed,2
+test-triangles.R,paid triangle reconciles to claim payments up to valuation,passed,1
+test-triangles.R,received triangle reconciles to claims reported up to valuation,passed,1
+test-triangles.R,no payment after valuation leaks into any triangle,passed,5
+test-triangles.R,payment lag never exceeds the cap,passed,2

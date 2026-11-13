@@ -1,0 +1,104 @@
+{
+  "valuation_date": "2026-09-30",
+  "n_claims": 64646,
+  "n_accident_months": 36,
+  "paid_to_date_kes": 1397470393,
+  "best_estimate_outstanding_kes": 138821204,
+  "cl_outstanding_kes": 134214179,
+  "bf_outstanding_kes": 134426293,
+  "pipeline_kes": 89804565,
+  "beyond_pipeline_kes": 49016640,
+  "true_outstanding_kes": 142222622,
+  "base_cl_error_kes": -8008443,
+  "base_cl_error_pct": -0.0563092035367341,
+  "mack_se_kes": 16122375,
+  "mack_cv": 0.120124227319939,
+  "boot_mean_kes": 134677049,
+  "boot_sd_kes": 18945896,
+  "boot_p50_kes": 131927351,
+  "boot_p75_kes": 143128695,
+  "boot_p995_kes": 219084630,
+  "boot_replicates": 5000,
+  "months_of_claims": 2.8651970378582,
+  "newest_month_cdf": 25.5491197396448,
+  "true_loss_ratio": 0.878507941825448,
+  "bf_elr": 0.78,
+  "backlog": {
+    "n_months": 3,
+    "pct": 0.3,
+    "delayed_claims": 1739,
+    "delayed_kes": 45065584,
+    "cl_error_kes": -93608488,
+    "cl_error_pct": -0.499809839767239,
+    "sentence": "A 3-month, 30% payment slowdown makes chain ladder under-reserve by KES 93,608,488 (50.0%).",
+    "methods": {
+      "bf_paid": {
+        "label": "BF on paid, ELR prior",
+        "outstanding_kes": 133114740,
+        "error_kes": -54173466,
+        "error_pct": -0.289251880464429
+      },
+      "cl_all": {
+        "label": "Paid chain ladder, all diagonals",
+        "outstanding_kes": 93679718,
+        "error_kes": -93608488,
+        "error_pct": -0.499809839767239
+      },
+      "cl_excl": {
+        "label": "Paid chain ladder, slowed diagonals excluded",
+        "outstanding_kes": 95683040,
+        "error_kes": -91605166,
+        "error_pct": -0.489113374452022
+      },
+      "received_cl": {
+        "label": "Received claims chain ladder",
+        "outstanding_kes": 189183042,
+        "error_kes": 1894836,
+        "error_pct": 0.0101172177864646
+      },
+      "selected": {
+        "label": "Selected basis (BF for the latest 3 months, chain ladder before)",
+        "outstanding_kes": 130287990,
+        "error_kes": -57000216,
+        "error_pct": -0.304344931067656
+      }
+    },
+    "shortfall_parts_kes": {
+      "base_error": -8008443,
+      "missing_payments": -45065584,
+      "multiplied": -37555979,
+      "factors": -2978482
+    },
+    "backtest_ae": {
+      "base": {
+        "cl_all": 1.11444876685518,
+        "cl_excl": 1.11422611117334,
+        "received_cl": 1.0865340251561,
+        "bf_paid": 1.15676131160161
+      },
+      "backlog": {
+        "cl_all": 1.04262690504362,
+        "cl_excl": 1.02427734031259,
+        "received_cl": 0.780746746405796,
+        "bf_paid": 0.912943381738952
+      }
+    },
+    "pipeline_months_at_valuation": {
+      "base": 1.79490564932428,
+      "backlog": 3.85024744800468
+    },
+    "ae_latest_month": {
+      "base": 1.11510845071605,
+      "backlog": 0.801273233896647
+    }
+  },
+  "ifrs17": {
+    "confidence": 0.75,
+    "best_estimate_kes": 138821204,
+    "present_value_kes": 136946191,
+    "discount_effect_kes": 1875014,
+    "ra_kes": 8337493,
+    "lic_kes": 145283684,
+    "lic_undiscounted_kes": 147272851
+  }
+}

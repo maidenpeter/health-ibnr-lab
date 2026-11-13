@@ -1,0 +1,9 @@
+.Rhistory
+.RData
+.Rproj.user/
+renv/library/
+renv/staging/
+rsconnect/
+*.log
+CLAUDE.md
+.claude/
