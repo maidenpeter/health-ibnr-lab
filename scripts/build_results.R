@@ -142,7 +142,8 @@ sp <- H$backlog$shortfall_parts_kes
 fill <- c(
   n_claims = formatC(H$n_claims, big.mark = ","), n_acc = H$n_accident_months,
   valuation_date = format(as.Date(H$valuation_date), "%d %B %Y"),
-  be = fmt_kes(H$best_estimate_outstanding_kes), mack_cv = fmt_pct(H$mack_cv), mack_se = fmt_kes(H$mack_se_kes),
+  be = fmt_kes(H$best_estimate_outstanding_kes), be_m = fmt_kes_m(H$best_estimate_outstanding_kes),
+  shortfall_m = fmt_kes_m(-H$backlog$cl_error_kes), mack_cv = fmt_pct(H$mack_cv), mack_se = fmt_kes(H$mack_se_kes),
   sentence = H$backlog$sentence, received_err = fmt_pct(abs(m$received_cl$error_pct)),
   bf_elr = fmt_pct(H$bf_elr, 0), true_lr = fmt_pct(H$true_loss_ratio),
   cdf1 = formatC(H$newest_month_cdf, format = "f", digits = 0),
