@@ -4,7 +4,7 @@ How much we owe on health claims, how sure we are, and what breaks the estimate.
 
 On a synthetic medical book of {{n_claims}} claims valued at {{valuation_date}}, the best estimate of outstanding claims (pipeline plus IBNR) is **{{be}}**, with a Mack coefficient of variation of {{mack_cv}}. The estimate holds up in normal conditions and breaks when payments slow down. **{{sentence}}** A chain ladder on received claims, which do not slow down, stays within {{received_err}} of the truth.
 
-Live app: link to follow once deployed.
+**Live app: [maidenpeter.shinyapps.io/health-ibnr-lab](https://maidenpeter.shinyapps.io/health-ibnr-lab/)**. It runs on the shinyapps.io free plan (up to 5 apps and 25 active hours a month), so it sleeps when nobody is using it and can take a few seconds to wake.
 
 Built in R (shiny, bslib, ChainLadder). Synthetic portfolio. Illustrative only.
 

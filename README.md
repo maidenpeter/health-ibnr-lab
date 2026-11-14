@@ -4,7 +4,7 @@ How much we owe on health claims, how sure we are, and what breaks the estimate.
 
 On a synthetic medical book of 64,646 claims valued at 30 September 2026, the best estimate of outstanding claims (pipeline plus IBNR) is **KES 138,821,204**, with a Mack coefficient of variation of 12.0%. The estimate holds up in normal conditions and breaks when payments slow down. **A 3-month, 30% payment slowdown makes chain ladder under-reserve by KES 93,608,488 (50.0%).** A chain ladder on received claims, which do not slow down, stays within 1.0% of the truth.
 
-Live app: link to follow once deployed.
+**Live app: [maidenpeter.shinyapps.io/health-ibnr-lab](https://maidenpeter.shinyapps.io/health-ibnr-lab/)**. It runs on the shinyapps.io free plan (up to 5 apps and 25 active hours a month), so it sleeps when nobody is using it and can take a few seconds to wake.
 
 Built in R (shiny, bslib, ChainLadder). Synthetic portfolio. Illustrative only.
 
