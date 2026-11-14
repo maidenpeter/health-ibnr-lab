@@ -136,31 +136,5 @@ message(sprintf("Tests: %d passed, %d failed", sum(tests$result == "passed"), su
 
 # README ---------------------------------------------------------------------
 # Every number in the README comes from headline.json and test_results.csv.
-H <- res$headline
-m <- H$backlog$methods
-sp <- H$backlog$shortfall_parts_kes
-fill <- c(
-  n_claims = formatC(H$n_claims, big.mark = ","), n_acc = H$n_accident_months,
-  valuation_date = format(as.Date(H$valuation_date), "%d %B %Y"),
-  be = fmt_kes(H$best_estimate_outstanding_kes), mack_cv = fmt_pct(H$mack_cv), mack_se = fmt_kes(H$mack_se_kes),
-  sentence = H$backlog$sentence, received_err = fmt_pct(abs(m$received_cl$error_pct)),
-  bf_elr = fmt_pct(H$bf_elr, 0), true_lr = fmt_pct(H$true_loss_ratio),
-  cdf1 = formatC(H$newest_month_cdf, format = "f", digits = 0),
-  boot_r = formatC(H$boot_replicates, big.mark = ","), p75 = fmt_kes(H$boot_p75_kes), p995 = fmt_kes(H$boot_p995_kes),
-  pv = fmt_kes(H$ifrs17$present_value_kes), ra = fmt_kes(H$ifrs17$ra_kes), lic = fmt_kes(H$ifrs17$lic_kes),
-  delayed = fmt_kes(H$backlog$delayed_kes),
-  err_cl_all = fmt_pct(m$cl_all$error_pct), err_cl_excl = fmt_pct(m$cl_excl$error_pct),
-  err_received_cl = fmt_pct(m$received_cl$error_pct), err_bf_paid = fmt_pct(m$bf_paid$error_pct),
-  shortfall = fmt_kes(-H$backlog$cl_error_kes), missing = fmt_kes(-sp$missing_payments),
-  multiplied = fmt_kes(-sp$multiplied), factors = fmt_kes(-sp$factors),
-  bt_cl_backlog = fmt_pct(H$backlog$backtest_ae$backlog$cl_all), bt_cl_base = fmt_pct(H$backlog$backtest_ae$base$cl_all),
-  bt_rec_backlog = fmt_pct(H$backlog$backtest_ae$backlog$received_cl),
-  pipe_backlog = formatC(H$backlog$pipeline_months_at_valuation$backlog, format = "f", digits = 1),
-  pipe_base = formatC(H$backlog$pipeline_months_at_valuation$base, format = "f", digits = 1),
-  tests_passed = sum(tests$result == "passed"), tests_total = nrow(tests)
-)
-readme <- readLines("scripts/readme_template.md", encoding = "UTF-8")
-for (k in names(fill)) readme <- gsub(paste0("{{", k, "}}"), fill[[k]], readme, fixed = TRUE)
-if (any(grepl("{{", readme, fixed = TRUE))) stop("README placeholder left unfilled: ", grep("{{", readme, value = TRUE, fixed = TRUE)[1])
-writeLines(readme, "README.md", useBytes = TRUE)
+source("scripts/render_readme.R")
 message(res$headline$backlog$sentence)

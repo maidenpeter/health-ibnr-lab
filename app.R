@@ -61,7 +61,7 @@ book_ui <- function() {
     ),
     section("The book",
       layout_columns(col_widths = breakpoints(sm = 12, lg = c(7, 5)),
-        DTOutput("book_benefit"), DTOutput("book_scheme")),
+        DTOutput("book_benefit", fill = FALSE), DTOutput("book_scheme", fill = FALSE)),
       takeaway(sprintf(paste(
         "Outpatient is the bulk of claim counts; inpatient is the bulk of the money. Earned premium over the",
         "36 months is %s, and the BF prior assumes %s of it becomes paid claims."),
@@ -78,11 +78,13 @@ book_server <- function(input, output, session) {
       data.frame(month = months[seq_len(n_acc)], part = "Still to pay (best estimate)", kes = O$selected_reserve)
     )
     d$part <- factor(d$part, c("Still to pay (best estimate)", "Paid to date"))
+    nar <- is_narrow(session, "book_plot")
     ggplot(d, aes(month, kes, fill = part)) +
       geom_col(width = 24, colour = COL$bg, linewidth = 0.3) +
       scale_fill_manual(values = c("Paid to date" = COL$navy, "Still to pay (best estimate)" = COL$amber)) +
       scale_y_continuous(labels = kes_axis, expand = expansion(c(0, 0.04))) +
-      scale_x_date(date_breaks = if (is_narrow(session, "book_plot")) "6 months" else "3 months", date_labels = "%b %y") +
+      scale_x_date(date_breaks = if (nar) "12 months" else "3 months", date_labels = "%b %y") +
+      guides(fill = guide_legend(nrow = if (nar) 2 else 1)) +
       labs(x = "Accident month", y = "KES") + theme_lab()
   }, res = 96)
   output$book_benefit <- renderDT({
@@ -118,10 +120,10 @@ tri_ui <- function() {
       selectInput("tri_benefit", "Benefit type", c("All benefits" = "all", "Outpatient" = "outpatient",
                   "Inpatient" = "inpatient", "Maternity" = "maternity", "Chronic" = "chronic"))
     )),
-    section("Triangle, KES thousands, development months 1 to 24", DTOutput("tri_table"), uiOutput("tri_take")),
+    section("Triangle, KES thousands, development months 1 to 24", DTOutput("tri_table", fill = FALSE), uiOutput("tri_take")),
     section("Development factors",
       layout_columns(col_widths = breakpoints(sm = 12, lg = c(5, 7)),
-        DTOutput("tri_factors"),
+        DTOutput("tri_factors", fill = FALSE),
         tagList(plotOutput("tri_heat", height = "460px"), uiOutput("tri_heat_take"))))
   )
 }
@@ -196,7 +198,7 @@ res_ui <- function() {
         max = cfg$methods$elr_slider_max, value = cfg$methods$bf_elr, step = 0.01, width = "100%")),
     uiOutput("res_kpis"),
     section("Ultimates for the latest 12 accident months", plotOutput("res_plot", height = "360px"), uiOutput("res_take")),
-    section("Outstanding claims (pipeline plus IBNR), by accident month", uiOutput("res_split"), DTOutput("res_table"))
+    section("Outstanding claims (pipeline plus IBNR), by accident month", uiOutput("res_split"), DTOutput("res_table", fill = FALSE))
   )
 }
 
@@ -324,13 +326,13 @@ bl_ui <- function() {
       sliderInput("bl_n", "Slowdown length (calendar months up to valuation)", min = 1, max = 6, value = cfg$backlog$default_n_months, step = 1, width = "100%"),
       sliderInput("bl_x", "Share of due payments held back", min = 0, max = 60, value = 100 * cfg$backlog$default_pct, step = 10, post = "%", width = "100%"))),
     uiOutput("bl_kpis"),
-    section("Four methods against the truth", plotOutput("bl_methods", height = "300px"), uiOutput("bl_methods_take"), DTOutput("bl_table")),
+    section("Four methods against the truth", plotOutput("bl_methods", height = "300px"), uiOutput("bl_methods_take"), DTOutput("bl_table", fill = FALSE)),
     section("Why excluding the slowed months barely helps", plotOutput("bl_parts", height = "250px"), uiOutput("bl_parts_take")),
     section("See it before the reserve moves",
       layout_columns(col_widths = breakpoints(sm = 12, lg = c(6, 6)),
         tagList(h3("Actual against expected paid"), plotOutput("bl_ae", height = "440px"), uiOutput("bl_ae_take")),
         tagList(h3("Pipeline as months of paid claims"), plotOutput("bl_pipe", height = "440px"), uiOutput("bl_pipe_take")))),
-    section("Back-test: hold out the latest month", uiOutput("bl_bt_take"), DTOutput("bl_bt")),
+    section("Back-test: hold out the latest month", uiOutput("bl_bt_take"), DTOutput("bl_bt", fill = FALSE)),
     note_box("What we expected, and what the numbers say", uiOutput("bl_expect"))
   )
 }
@@ -610,8 +612,8 @@ meth_ui <- function() {
         tags$li("No reinsurance, no diversification, one portfolio."),
         tags$li("The true ultimate is known only because the data is synthetic. It is shown to measure method error and would not exist in practice."),
         tags$li("The backlog is the only stress tested. A change in settlement ratios, a provider fraud review or a benefit change would hit the received claims chain ladder too.")))),
-    section("Assumptions (config.yml)", DTOutput("meth_config")),
-    section("Tests", takeaway(sprintf("%d of %d tests pass, run when the results were built.", n_pass, nrow(tests))), DTOutput("meth_tests")),
+    section("Assumptions (config.yml)", DTOutput("meth_config", fill = FALSE)),
+    section("Tests", takeaway(sprintf("%d of %d tests pass, run when the results were built.", n_pass, nrow(tests))), DTOutput("meth_tests", fill = FALSE)),
     div(class = "muted", sprintf("Results built %s with %s and ChainLadder %s.", res$built_at, res$r_version, res$chainladder_version))
   )
 }

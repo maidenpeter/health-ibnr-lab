@@ -90,6 +90,19 @@
     "ae_latest_month": {
       "base": 1.11510845071605,
       "backlog": 0.801273233896647
+    },
+    "grid": {
+      "n_scenarios": 42,
+      "n_months_range": [1, 6],
+      "pct_range": [0, 0.6],
+      "corner_error_pct": {
+        "cl_all": -0.848007052688334,
+        "cl_excl": -0.834179876746426,
+        "received_cl": 0.00590495377753665,
+        "bf_paid": -0.592132761933696,
+        "selected": -0.642614930278481
+      },
+      "received_cl_error_pct_range": [0.00590495377753665, 0.0133230251439061]
     }
   },
   "ifrs17": {

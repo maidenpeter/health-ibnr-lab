@@ -65,7 +65,17 @@ make_headline <- function(res) {
       ae_latest_month = list(
         base = utils::tail(base_s$ae$by_cal$ae, 1),
         backlog = utils::tail(d$ae$by_cal$ae, 1)
-      )
+      ),
+      grid = local({
+        g <- res$grid_summary
+        corner <- g[g$n_months == max(g$n_months) & g$pct == max(g$pct), ]
+        list(
+          n_scenarios = length(res$grid),
+          n_months_range = range(g$n_months), pct_range = range(g$pct),
+          corner_error_pct = as.list(stats::setNames(corner$error_pct, corner$method)),
+          received_cl_error_pct_range = range(g$error_pct[g$method == "received_cl"])
+        )
+      })
     ),
     ifrs17 = list(
       confidence = lic$confidence,
