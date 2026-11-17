@@ -1,0 +1,31 @@
+<!doctype html>
+<!-- Layout for assets/readme/hero.png: the desktop app in a browser frame with the phone view beside it.
+     scripts/readme_images.R opens this file in headless Chrome and saves a screenshot of it. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; padding: 0; }
+  body { width: 1600px; height: 860px; position: relative; overflow: hidden;
+         background: linear-gradient(135deg, #f6f3ec 0%, #e8e2d4 100%); font-family: Inter, "Segoe UI", system-ui, sans-serif; }
+  .browser { position: absolute; left: 56px; top: 52px; width: 1240px; border-radius: 12px; overflow: hidden; background: #ffffff;
+             box-shadow: 0 28px 60px rgba(18, 21, 29, 0.22), 0 6px 16px rgba(18, 21, 29, 0.10); }
+  .bar { height: 36px; background: #1b1e27; display: flex; align-items: center; gap: 8px; padding: 0 16px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; background: #3b3f4b; }
+  .url { margin-left: 18px; width: 420px; height: 22px; border-radius: 6px; background: #2a2e39; color: #a3a5ad;
+         font-size: 12.5px; line-height: 22px; padding-left: 12px; }
+  .browser img { display: block; width: 100%; }
+  .phone { position: absolute; left: 1218px; top: 128px; width: 300px; border-radius: 40px; background: #0f1117; padding: 11px;
+           box-shadow: 0 30px 60px rgba(18, 21, 29, 0.30), 0 8px 18px rgba(18, 21, 29, 0.14); }
+  .phone img { display: block; width: 100%; border-radius: 30px; }
+</style>
+</head>
+<body>
+  <div class="browser">
+    <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <span class="url">maidenpeter.shinyapps.io/health-ibnr-lab</span></div>
+    <img src="../assets/readme/hero_backlog.png" alt="">
+  </div>
+  <div class="phone"><img src="../assets/readme/phone_book.png" alt=""></div>
+</body>
+</html>

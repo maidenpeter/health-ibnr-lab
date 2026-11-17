@@ -634,14 +634,14 @@ meth_server <- function(input, output, session) {
 
 ui <- page_navbar(
   id = "nav",
-  title = tags$span(class = "navbar-brand", tags$img(src = "mark.svg", alt = ""),
-    tags$span(tags$span(class = "brand-name", "Health IBNR Lab"), tags$br(),
+  title = tags$span(class = "brand", tags$img(src = "mark.svg", alt = ""),
+    tags$span(class = "brand-text", tags$span(class = "brand-name", "Health IBNR Lab"),
               tags$span(class = "brand-tag", "Reserving a medical book, and what breaks when claims slow down"))),
   window_title = "Health IBNR Lab",
   theme = lab_theme(),
   fillable = FALSE,
   navbar_options = navbar_options(bg = COL$bar, theme = "dark", collapsible = TRUE),
-  header = tags$head(tags$link(rel = "stylesheet", href = "styles.css"), tags$script(src = "tables.js"),
+  header = tags$head(tags$link(rel = "stylesheet", href = "styles.css"), tags$script(src = "app.js"),
                      tags$meta(name = "description", content = "Health IBNR reserving on a synthetic medical book, in R.")),
   nav_panel("Book", book_ui()),
   nav_panel("Triangles", tri_ui()),

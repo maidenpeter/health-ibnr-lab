@@ -24,12 +24,9 @@
   &nbsp;&middot;&nbsp; <a href="#run-it-locally">Run it locally</a>
 </p>
 
-<table>
-  <tr>
-    <td width="79%"><a href="https://maidenpeter.shinyapps.io/health-ibnr-lab/"><img src="assets/readme/hero_backlog.png" width="100%" alt="The Backlog page of the live app"></a></td>
-    <td width="21%"><img src="assets/readme/phone_book.png" width="100%" alt="The Book page on a phone"></td>
-  </tr>
-</table>
+<p align="center">
+  <a href="https://maidenpeter.shinyapps.io/health-ibnr-lab/"><img src="assets/readme/hero.png" width="100%" alt="The Backlog page of the live app on a laptop, and the Book page on a phone"></a>
+</p>
 
 <p align="center"><sub>The app runs on the shinyapps.io free plan (up to 5 apps and 25 active hours a month), so it sleeps when nobody is using it and takes a few seconds to wake.</sub></p>
 
@@ -37,9 +34,9 @@
 
 <table>
   <tr>
-    <td align="center" width="33%"><h3>KES 138.8m</h3>best estimate of outstanding claims<br><sub>pipeline plus IBNR, valued 30 September 2026</sub></td>
-    <td align="center" width="33%"><h3>12.0%</h3>Mack coefficient of variation<br><sub>99.5th percentile of the bootstrap: KES 219.1m</sub></td>
-    <td align="center" width="33%"><h3>-50.0%</h3>paid chain ladder error<br><sub>when 30% of payments slip for 3 months</sub></td>
+    <td align="center" valign="top" width="33%"><h3>KES 138.8m</h3>best estimate outstanding<br><sub>pipeline plus IBNR at 30 September 2026</sub></td>
+    <td align="center" valign="top" width="33%"><h3>12.0%</h3>Mack coefficient of variation<br><sub>bootstrap 99.5th percentile KES 219.1m</sub></td>
+    <td align="center" valign="top" width="33%"><h3>-50.0%</h3>paid chain ladder error<br><sub>3 months, 30% of payments held back</sub></td>
   </tr>
 </table>
 
@@ -95,16 +92,25 @@ For the default slowdown (3 months, 30% of due payments held back, KES 45,065,58
 
 ## Tour of the app
 
-| | |
-|---|---|
-| ![Book](assets/screenshots/1-book.png) | ![Backlog](assets/screenshots/5-backlog.png) |
-| **Book.** The portfolio, the valuation date and the headline cards. | **Backlog.** The slowdown sliders, four methods against the truth, the early warnings and the back-test. |
-| ![Triangles](assets/screenshots/2-triangles.png) | ![Reserves](assets/screenshots/3-reserves.png) |
-| **Triangles.** Paid and received triangles, development factors and a link ratio heatmap. | **Reserves.** Chain ladder and BF side by side, with a live ELR slider. |
-| ![Uncertainty](assets/screenshots/4-uncertainty.png) | ![IFRS 17](assets/screenshots/6-ifrs17.png) |
-| **Uncertainty.** The ODP bootstrap distribution of the outstanding claims. | **IFRS 17.** From best estimate to LIC, with a live confidence level slider. |
-| ![Methods](assets/screenshots/7-methods.png) | |
-| **Methods.** Every assumption, every method choice, the limitations and the test results. | |
+Seven pages. Click any picture to see the whole page.
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><a href="assets/screenshots/1-book.png"><img src="assets/readme/pages/1-book.png" width="100%" alt="The Book page"></a><br><b>Book.</b> The portfolio, the valuation date and the headline cards.</td>
+    <td width="50%" valign="top"><a href="assets/screenshots/5-backlog.png"><img src="assets/readme/pages/5-backlog.png" width="100%" alt="The Backlog page"></a><br><b>Backlog.</b> The slowdown sliders, four methods against the truth, the early warnings and the back-test.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><a href="assets/screenshots/2-triangles.png"><img src="assets/readme/pages/2-triangles.png" width="100%" alt="The Triangles page"></a><br><b>Triangles.</b> Paid and received triangles, development factors and a link ratio heatmap.</td>
+    <td width="50%" valign="top"><a href="assets/screenshots/3-reserves.png"><img src="assets/readme/pages/3-reserves.png" width="100%" alt="The Reserves page"></a><br><b>Reserves.</b> Chain ladder and BF side by side, with a live ELR slider.</td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top"><a href="assets/screenshots/4-uncertainty.png"><img src="assets/readme/pages/4-uncertainty.png" width="100%" alt="The Uncertainty page"></a><br><b>Uncertainty.</b> Mack standard errors and the ODP bootstrap distribution of the outstanding claims.</td>
+    <td width="50%" valign="top"><a href="assets/screenshots/6-ifrs17.png"><img src="assets/readme/pages/6-ifrs17.png" width="100%" alt="The IFRS 17 page"></a><br><b>IFRS 17.</b> From best estimate to LIC, with a live confidence level slider.</td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><a href="assets/screenshots/7-methods.png"><img src="assets/readme/pages/7-methods.png" width="50%" alt="The Methods page"></a><br><b>Methods.</b> Every assumption, every method choice, the limitations and the test results.</td>
+  </tr>
+</table>
 
 ## Why health IBNR matters
 
@@ -166,6 +172,7 @@ R/                        generator, triangles, methods, backlog, IFRS 17, forma
 config.yml                every assumption, each with a one line comment
 scripts/build_results.R   generates the data, runs every method and the tests
 scripts/render_readme.R   fills in this README and draws its figure
+scripts/readme_images.R   takes the README's pictures of the running app
 data/                     claims, results, headline numbers and test results
 tests/testthat/           reconciliation, method, backlog, headline and hygiene tests
 ```

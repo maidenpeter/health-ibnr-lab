@@ -2,15 +2,31 @@
 @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
 
 body { background: #faf9f6; color: #1d2430; }
-.navbar { background: #0F1117 !important; border-bottom: 1px solid #2a2d38; }
-.navbar-brand { display: flex; align-items: center; gap: 0.6rem; }
-.navbar-brand img { height: 26px; width: 26px; }
-.brand-name { font-family: 'EB Garamond', Garamond, Georgia, serif; font-size: 1.45rem; font-weight: 600; color: #FAFAFA; line-height: 1; }
-.brand-tag { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #E8A33A; line-height: 1.4; }
-.navbar .nav-link { color: #c9c6bc !important; border-radius: 6px; padding: 0.35rem 0.7rem !important; }
+/* Navbar: contents line up with the page, links sit on the right, one row at every desktop width. */
+.navbar { background: #0F1117 !important; border-bottom: 1px solid #2a2d38; padding-top: 0.55rem; padding-bottom: 0.55rem; }
+.navbar > .container-fluid { max-width: 1240px; margin: 0 auto; padding-left: 1rem; padding-right: 1rem; }
+.navbar .navbar-header { display: flex; align-items: center; justify-content: space-between; }
+.navbar .navbar-brand { display: flex; align-items: center; margin-right: 1.5rem; padding-top: 0; padding-bottom: 0; }
+.brand { display: flex; align-items: center; gap: 0.65rem; }
+.brand img { height: 26px; width: 26px; flex: none; }
+.brand-text { display: flex; flex-direction: column; }
+.brand-name { font-family: 'EB Garamond', Garamond, Georgia, serif; font-size: 1.45rem; font-weight: 600; color: #FAFAFA; line-height: 1.1; }
+.brand-tag { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #E8A33A; line-height: 1.4; margin-top: 0.15rem; }
+.navbar .navbar-nav .nav-link { color: #c9c6bc !important; border-radius: 6px; padding: 0.4rem 0.75rem !important; margin-bottom: 0 !important; white-space: nowrap; }
 .navbar .nav-link:hover { color: #ffffff !important; background: rgba(255,255,255,0.06); }
 .navbar .nav-link.active { color: #FFC24B !important; background: rgba(232,150,12,0.12); }
-.navbar .nav-link[data-value="Backlog"] { font-weight: 600; }
+@media (min-width: 992px) {
+  .navbar .navbar-collapse { justify-content: flex-end; }
+  .navbar .navbar-nav { justify-content: flex-end; gap: 0.3rem; }
+}
+@media (max-width: 1279.98px) { .brand-tag { display: none; } }
+@media (max-width: 991.98px) {
+  .navbar .navbar-header { width: 100%; }
+  .navbar .navbar-toggle { order: 2; margin-left: auto; }
+  .navbar .navbar-collapse { margin-top: 0.6rem; padding: 0.4rem 0 0.5rem 0; border-top: 1px solid #2a2d38; }
+  .navbar .navbar-nav { gap: 0.1rem; }
+  .navbar .navbar-nav .nav-link { padding: 0.65rem 0.8rem !important; font-size: 1rem; }
+}
 
 .container-fluid.main { max-width: 1240px; }
 .tab-content { padding: 1.6rem 0.5rem 2.5rem 0.5rem; max-width: 1240px; margin: 0 auto; }
@@ -55,7 +71,6 @@ table.dataTable thead th { color: #52514e; font-weight: 600; border-bottom: 1px 
   .headline { font-size: 1.3rem; }
   .kpi .value { font-size: 1.7rem; }
   .tab-content { padding: 1rem 0 2rem 0; }
-  .brand-tag { display: none; }
 }
 
 /* Tables: headers and text wrap, numbers stay on one line. A table that is still too wide scrolls inside its own card. */
