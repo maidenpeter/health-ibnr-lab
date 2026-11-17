@@ -21,6 +21,11 @@ fwrite(claims[, .(claim_id, accident_month, report_month, payment_month, benefit
 expo <- exposure_table(cfg)
 premium <- expo[, .(earned_premium_kes = sum(earned_premium_kes)), by = acc_idx][order(acc_idx)]$earned_premium_kes
 
+# Sample files for the Your data page: the book as it stood at valuation, in the upload format.
+fwrite(sample_extract(claims, val), "data/sample_claims.csv")
+fwrite(data.frame(accident_month = format(months[seq_len(n_acc)], "%Y-%m"), earned_premium_kes = round(premium)),
+       "data/sample_premium.csv")
+
 # Base case ------------------------------------------------------------------
 message("Base case")
 benefits <- c("all", names(cfg$frequency$benefit_mix))

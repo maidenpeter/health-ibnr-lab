@@ -1,19 +1,22 @@
 # Takes the README's pictures of a running app. Needs Chrome.
 # Usage: start the app (shiny::runApp(port = 7788)), then Rscript scripts/readme_images.R [url]
 # Writes, under assets/readme/:
-#   pages/1-book.png ... pages/7-methods.png   what each page shows above the fold, all the same size
+#   pages/1-book.png ... pages/8-yourdata.png  what each page shows above the fold, all the same size
 #   hero_backlog.png, phone_book.png            the Backlog page on a laptop and the Book page on a phone
 #   hero.png                                    the two combined, laid out by scripts/readme_hero.html
 
 args <- commandArgs(trailingOnly = TRUE)
 url <- if (length(args) >= 1) args[1] else "http://127.0.0.1:7788"
-pages <- c("Book", "Triangles", "Reserves", "Uncertainty", "Backlog", "IFRS 17", "Methods")
+pages <- c("Book", "Triangles", "Reserves", "Uncertainty", "Backlog", "IFRS 17", "Methods", "Your data")
 dir.create("assets/readme/pages", recursive = TRUE, showWarnings = FALSE)
 options(chromote.timeout = 90)
 
 open_app <- function(width, height, scale = 1) {
   b <- chromote::ChromoteSession$new(width = width, height = height)
   b$Emulation$setDeviceMetricsOverride(width = width, height = height, deviceScaleFactor = scale, mobile = width < 700)
+  # A documentation address (TEST-NET-3), so a local run shows the Your data page as a visitor sees it.
+  b$Network$enable()
+  b$Network$setExtraHTTPHeaders(headers = list(`X-Forwarded-For` = "203.0.113.10"))
   b$Page$navigate(url, wait_ = FALSE)
   for (i in 1:60) {
     Sys.sleep(1)

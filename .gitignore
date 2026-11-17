@@ -7,3 +7,4 @@ rsconnect/
 *.log
 CLAUDE.md
 .claude/
+.Renviron

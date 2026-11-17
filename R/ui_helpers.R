@@ -13,6 +13,9 @@ METHOD_COLS <- c(cl_all = "#c47a06", cl_excl = "#8e3a5d", received_cl = "#00998a
 
 SYNTHETIC_LABEL <- "Synthetic portfolio. Illustrative only."
 
+# Where people send test data and booked reserves to compare against.
+CONTACT_EMAIL <- "marionpeter@nuruops.com"
+
 lab_theme <- function() {
   bslib::bs_theme(
     version = 5, bg = COL$bg, fg = COL$ink, primary = "#34497d", secondary = "#52514e",
@@ -22,11 +25,11 @@ lab_theme <- function() {
   )
 }
 
-page_head <- function(kicker, title, lede = NULL) {
+page_head <- function(kicker, title, lede = NULL, label = SYNTHETIC_LABEL) {
   shiny::div(class = "page-head",
     shiny::div(class = "kicker", kicker),
     shiny::h1(title),
-    shiny::div(class = "synthetic", SYNTHETIC_LABEL),
+    shiny::div(class = "synthetic", label),
     if (!is.null(lede)) shiny::p(class = "lede", lede)
   )
 }

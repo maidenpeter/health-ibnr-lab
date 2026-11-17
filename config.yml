@@ -115,3 +115,14 @@ ifrs17:
   ra_confidence_default: 0.75     # Risk adjustment confidence level shown first
   ra_slider_min: 0.60             # Lowest confidence level on the slider
   ra_slider_max: 0.995            # Highest confidence level on the slider
+
+upload:
+  max_file_mb: 30                 # Largest file accepted on the Your data page, MB
+  max_rows: 500000                # Most rows accepted in an uploaded claims file
+  min_accident_months: 12         # Fewest accident months up to valuation needed to build a triangle from uploaded data
+  max_accident_months: 60         # Most accident months used from uploaded data; older months are left out
+  bootstrap_R: 1000               # Bootstrap replicates on uploaded data; fewer than the base case so a run stays quick
+  mature_after_months: 12         # Accident months older than this set the default BF loss ratio on uploaded data
+  min_claims_for_ratio: 30        # Settled claims a benefit type needs before it gets its own settlement ratio
+  elr_slider_min: 0.30            # Lowest BF loss ratio on the Your data slider
+  elr_slider_max: 1.50            # Highest BF loss ratio on the Your data slider

@@ -72,7 +72,10 @@ fill <- c(
   corner_cl_all = gap(gr$corner_error_pct$cl_all), corner_cl_excl = gap(gr$corner_error_pct$cl_excl),
   corner_bf_paid = gap(gr$corner_error_pct$bf_paid),
   rec_min = fmt_pct(gr$received_cl_error_pct_range[1]), rec_max = fmt_pct(gr$received_cl_error_pct_range[2]),
-  tests_passed = sum(tests$result == "passed"), tests_total = nrow(tests)
+  tests_passed = sum(tests$result == "passed"), tests_total = nrow(tests),
+  up_mb = res$cfg$upload$max_file_mb, up_rows = formatC(res$cfg$upload$max_rows, big.mark = ","),
+  up_min = res$cfg$upload$min_accident_months, up_max = res$cfg$upload$max_accident_months,
+  up_boot = formatC(res$cfg$upload$bootstrap_R, big.mark = ","), contact = CONTACT_EMAIL
 )
 readme <- readLines("scripts/readme_template.md", encoding = "UTF-8")
 for (k in names(fill)) readme <- gsub(paste0("{{", k, "}}"), fill[[k]], readme, fixed = TRUE)

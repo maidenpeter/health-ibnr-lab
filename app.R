@@ -23,6 +23,13 @@ latest_k <- which(seq_len(n_acc) > n_acc - bf_n)
 val_label <- format(cfg$valuation_date, "%d %B %Y")
 pct_grid <- unlist(cfg$backlog$pct_grid)
 
+# Your data page: upload size, and the store that keeps the free run to one per network address.
+# .Renviron (git-ignored, written by scripts/setup_trial_store.R) holds the store's settings when there are any.
+options(shiny.maxRequestSize = cfg$upload$max_file_mb * 1024^2)
+if (file.exists(".Renviron")) readRenviron(".Renviron")
+TRIALS <- trial_store()
+message("Trial store: ", TRIALS$kind)
+
 # Book -----------------------------------------------------------------------
 
 book_ui <- function() {
@@ -52,6 +59,9 @@ book_ui <- function() {
                   fmt_pct(abs(H$backlog$methods$received_cl$error_pct)), " of the truth. ",
                   actionLink("go_backlog", "See the Backlog page")), class = "teaser")
     ),
+    div(class = "cta-strip",
+      tags$span(tags$b("Have your own claims?"), " The same methods run on your data, with a log of every step you can download."),
+      actionLink("go_yourdata", "Try the Your data page")),
     section("Paid to date and still to pay, by accident month",
       plotOutput("book_plot", height = "340px"),
       takeaway(sprintf(paste(
@@ -72,6 +82,7 @@ book_ui <- function() {
 
 book_server <- function(input, output, session) {
   observeEvent(input$go_backlog, nav_select("nav", "Backlog"))
+  observeEvent(input$go_yourdata, nav_select("nav", "Your data"))
   output$book_plot <- renderPlot({
     d <- rbind(
       data.frame(month = months[seq_len(n_acc)], part = "Paid to date", kes = O$paid),
@@ -610,14 +621,22 @@ meth_ui <- function() {
         tags$li(tags$b("Excluding slowed diagonals. "), "Weights of zero on every link ratio that ends in a slowed calendar month, the same as the weights argument of MackChainLadder (a test checks the two agree)."),
         tags$li(tags$b("A/E diagnostic. "), sprintf("Expected paid in each cell is the received amount to date times the paid-to-received ratio at that development month, measured on payments at least %d months before valuation. The build plan proposed expected = previous cumulative paid times (factor minus 1). We tried it first. It was too noisy at early development, where the factor is large, and its expectation falls with the slowed payments it is checking. Received claims do not slow down, so they make a stable anchor.", as.integer(cfg$diagnostics$ae_fit_gap_months))),
         tags$li(tags$b("Back-test. "), "Value the book one month before valuation, project the held-out month as each method's ultimate times the share its paid pattern expects in that month, and compare with what was paid."),
-        tags$li(tags$b("IFRS 17. "), "See the IFRS 17 page for the discounting choice, the risk adjustment and the simplifications.")))),
+        tags$li(tags$b("IFRS 17. "), "See the IFRS 17 page for the discounting choice, the risk adjustment and the simplifications."),
+        tags$li(tags$b("Your data. "), sprintf(paste("The same paid chain ladder, Mack and bootstrap code runs on an uploaded extract, with %s",
+          "bootstrap replicates to keep a run quick. Received claims are valued at settlement ratios measured on the upload's own",
+          "settled claims, by benefit type where a type has at least %d of them. The BF prior starts at the chain ladder loss",
+          "ratio of the accident months more than %d months old, and the user can move it. The backlog check compares actual",
+          "paid with what received claims and older payment patterns predict, the same way as on the Backlog page. Run on the",
+          "sample file, it reproduces the Reserves page's chain ladder exactly (a test checks this)."),
+          formatC(cfg$upload$bootstrap_R, big.mark = ","), as.integer(cfg$upload$min_claims_for_ratio), as.integer(cfg$upload$mature_after_months)))))),
     section("Limitations",
       div(class = "prose", tags$ul(
         tags$li("Synthetic data. The generator is simple: independent claims, fixed lag patterns, one settlement ratio per benefit type. Real books have changing mixes, tariff renegotiations, fraud reviews and seasonality in processing as well as in claims."),
         tags$li("No case reserves, so no incurred triangle, and no claims handling expenses in any reserve."),
         tags$li("No reinsurance, no diversification, one portfolio."),
         tags$li("The true ultimate is known only because the data is synthetic. It is shown to measure method error and would not exist in practice."),
-        tags$li("The backlog is the only stress tested. A change in settlement ratios, a provider fraud review or a benefit change would hit the received claims chain ladder too.")))),
+        tags$li("The backlog is the only stress tested. A change in settlement ratios, a provider fraud review or a benefit change would hit the received claims chain ladder too."),
+        tags$li("The Your data page has not been reviewed against real industry data. It applies one set of method choices with no tail factor and no judgement, so its results are a starting point for discussion, not a reserve.")))),
     section("Assumptions (config.yml)", DTOutput("meth_config", fill = FALSE)),
     section("Tests", takeaway(sprintf("%d of %d tests pass, run when the results were built.", n_pass, nrow(tests))), DTOutput("meth_tests", fill = FALSE)),
     div(class = "muted", sprintf("Results built %s with %s and ChainLadder %s.", res$built_at, res$r_version, res$chainladder_version))
@@ -628,6 +647,427 @@ meth_server <- function(input, output, session) {
   output$meth_config <- renderDT(lab_dt(setNames(res$config_table, c("Parameter", "Value", "What it means")), page_length = 15, dom = "ftip"))
   output$meth_tests <- renderDT(lab_dt(setNames(tests[, c("file", "test", "result", "expectations")],
                                                c("File", "Test", "Result", "Expectations")), page_length = 25, dom = "t"))
+}
+
+# Your data ------------------------------------------------------------------
+# Visitors run the same methods on their own claims extract. One free run per network address
+# (R/trial_store.R); runs on the sample file are free. Files stay in memory for the session only.
+
+SAMPLE_CLAIMS <- "data/sample_claims.csv"
+SAMPLE_PREMIUM <- "data/sample_premium.csv"
+
+field_table <- function(f) {
+  tags$table(class = "field-table",
+    tags$thead(tags$tr(tags$th("Column"), tags$th("Needed"), tags$th("Format"), tags$th("What it is"))),
+    tags$tbody(lapply(seq_len(nrow(f)), function(i) tags$tr(
+      tags$td(`data-label` = "Column", tags$code(f$field[i])), tags$td(`data-label` = "Needed", f$need[i]),
+      tags$td(`data-label` = "Format", f$format[i]), tags$td(`data-label` = "What it is", f$meaning[i])))))
+}
+
+contact_link <- function() tags$a(href = paste0("mailto:", CONTACT_EMAIL, "?subject=Health%20IBNR%20Lab%20test%20data"),
+                                  CONTACT_EMAIL, .noWS = "outside")
+
+ud_ui <- function() {
+  up <- cfg$upload
+  tagList(
+    page_head("Your data", "Run the lab on your own claims",
+      paste("Upload a claims extract in the format below. The lab builds your paid and received triangles, runs chain",
+        "ladder, Mack and an ODP bootstrap, adds Bornhuetter-Ferguson if you include earned premium, and checks the",
+        "latest months for a payment slowdown. Every step goes into a log you can download."),
+      label = "Your own data, or the synthetic sample file. Illustrative only."),
+    div(class = "disclaimer",
+      div(class = "disclaimer-title", "Not yet tested on real industry data"),
+      tags$p(UPLOAD_DISCLAIMER),
+      tags$p("I am open to testing it. If you can share de-identified data where the reserve that was actually booked is",
+        "known, and ideally how the claims ran off afterwards, I will run it through this tool and send you the comparison:",
+        "this tool's estimate, the booked reserve, and what emerged. Write to ", contact_link(), ".")),
+    uiOutput("ud_trial"),
+    section("1. Put your claims in this format",
+      tags$p(class = "prose", "One row per claim invoice, saved as CSV. Column names must match the template; capitals",
+        "and spaces do not matter. Months can be", tags$span(class = "nowrap", "YYYY-MM"), "or a full date,",
+        tags$span(class = "nowrap", "YYYY-MM-DD,", .noWS = "after"), " and the day is ignored."),
+      h3("Claims file"),
+      field_table(UPLOAD_CLAIM_FIELDS),
+      tags$ul(class = "prose rules",
+        tags$li("Not yet paid: leave payment_month blank and put 0 in amount_paid_kes."),
+        tags$li("Rejected: put 0 in amount_paid_kes and the month it was closed in payment_month, so rejections count in the settlement ratio."),
+        tags$li("Paid in parts: one row per invoice, with the total paid and the month of the last payment."),
+        tags$li(sprintf("Up to %s rows and %d MB. With more, send the latest %d accident months.",
+          formatC(up$max_rows, big.mark = ","), as.integer(up$max_file_mb), as.integer(up$max_accident_months))),
+        tags$li("Leave out names, member numbers, phone numbers and diagnoses. The template does not ask for them, and any column not in it is dropped as soon as the file is read.")),
+      h3("Earned premium file (optional)"),
+      tags$p(class = "prose", "Needed only for Bornhuetter-Ferguson. One row per accident month."),
+      field_table(UPLOAD_PREMIUM_FIELDS),
+      div(class = "dl-row",
+        downloadButton("ud_tpl_claims", "Claims template", class = "btn-ghost"),
+        downloadButton("ud_tpl_premium", "Premium template", class = "btn-ghost"),
+        downloadButton("ud_sample_claims", "Sample claims file", class = "btn-ghost"),
+        downloadButton("ud_sample_premium", "Sample premium file", class = "btn-ghost")),
+      tags$p(class = "muted", "The sample is this lab's synthetic book as it stood at valuation, in the template format.",
+        "Run on it, and the chain ladder matches the Reserves page.")),
+    section("2. Upload and check",
+      div(class = "controls",
+        layout_columns(col_widths = breakpoints(sm = 12, md = c(6, 6)),
+          fileInput("ud_claims", "Claims file (CSV)", accept = c(".csv", "text/csv"), buttonLabel = "Choose file",
+                    placeholder = "No file chosen", width = "100%"),
+          fileInput("ud_premium", "Earned premium file (CSV, optional)", accept = c(".csv", "text/csv"),
+                    buttonLabel = "Choose file", placeholder = "No file chosen", width = "100%")),
+        uiOutput("ud_val")),
+      uiOutput("ud_checks"),
+      div(class = "run-row",
+        actionButton("ud_run", "Run on my file", class = "btn-run", disabled = TRUE),
+        actionButton("ud_sample", "Run on the sample file", class = "btn-ghost"),
+        uiOutput("ud_run_why", inline = TRUE)),
+      div(class = "log-box",
+        div(class = "log-head", tags$span(class = "note-title", "Log of what has been done"),
+            downloadButton("ud_log_dl", "Download the log", class = "btn-ghost btn-sm")),
+        tags$details(tags$summary("Show the log"), verbatimTextOutput("ud_log_text")))),
+    uiOutput("ud_results"),
+    note_box("What happens to your data",
+      tags$ul(
+        tags$li("Your files are read into memory for this visit only. They are not saved, and they are gone when you close the page."),
+        tags$li("Columns that are not in the template are dropped as soon as the file is read, before anything else happens."),
+        tags$li(paste("To keep the free run to one per network address, the app stores a scrambled fingerprint of the address",
+          "(a salted SHA-256 hash, which cannot be turned back into the address) and the date of the run. Nothing else is kept.")),
+        tags$li(tagList("An office or mobile network can share one address, so a colleague may have used the run already. Write to ",
+          contact_link(), " for another.")),
+        tags$li("Checking a file is free. Only a finished run on your own file uses the free run. Runs on the sample file are always free.")))
+  )
+}
+
+ud_server <- function(input, output, session) {
+  up <- cfg$upload
+  lg <- run_log()
+  log_tick <- reactiveVal(0)
+  touch <- function() log_tick(isolate(log_tick()) + 1)
+  addr <- client_address(session$request)
+  hash <- if (is.na(addr)) NA_character_ else trial_hash(addr, TRIALS$salt)
+  trial_tick <- reactiveVal(0)
+  trial <- reactive({
+    trial_tick()
+    if (is.na(hash)) list(used = NA, date = NA) else TRIALS$used(hash)
+  })
+  files <- reactiveVal(list())
+  prep <- reactiveVal(NULL)
+  run <- reactiveVal(NULL)
+  last_elr <- reactiveVal(NA)
+
+  read_file <- function(f, what) {
+    lg$add("File", sprintf("%s file received: %s, %s bytes, SHA-256 %s.", what, f$name,
+                           formatC(f$size, format = "d", big.mark = ","), file_fingerprint(f$datapath)))
+    tryCatch(read_upload_csv(f$datapath, up$max_rows),
+             error = function(e) { lg$add("Failed", f$name, " could not be read as CSV: ", conditionMessage(e)); NULL })
+  }
+  do_check <- function(val_key = NULL) {
+    fl <- files()
+    if (is.null(fl$name)) return()
+    run(NULL)
+    lg$add("Check", "Checking ", fl$name, if (!is.null(fl$premium_name)) paste0(" with ", fl$premium_name) else "", ".")
+    p <- if (is.null(fl$raw)) list(ok = FALSE, checks = data.frame(status = "Failed", check = "File",
+                                   detail = "The file could not be read as CSV.", stringsAsFactors = FALSE))
+         else prepare_upload(fl$raw, fl$premium_raw, cfg, lg, val_key)
+    lg$add(if (p$ok) "Check" else "Failed", if (p$ok) "The file is ready to run." else "The file cannot be run until the failed checks are fixed.")
+    prep(p)
+    touch()
+  }
+
+  observeEvent(input$ud_claims, {
+    fl <- files(); f <- input$ud_claims
+    fl$raw <- read_file(f, "Claims"); fl$name <- f$name
+    files(fl)
+    do_check()
+  })
+  observeEvent(input$ud_premium, {
+    fl <- files(); f <- input$ud_premium
+    fl$premium_raw <- read_file(f, "Premium"); fl$premium_name <- f$name
+    files(fl)
+    vk <- prep()$val_key
+    if (identical(vk, prep()$latest_pay_key)) vk <- NULL  # keep the default unless a month was chosen
+    if (is.null(fl$name)) touch() else do_check(vk)
+  })
+  observeEvent(input$ud_val_month, {
+    p <- prep()
+    if (!is.null(p$val_key) && as.integer(input$ud_val_month) != p$val_key) {
+      lg$add("Check", "Valuation month changed to ", month_key_label(as.integer(input$ud_val_month)), ".")
+      do_check(as.integer(input$ud_val_month))
+    }
+  }, ignoreInit = TRUE)
+
+  output$ud_val <- renderUI({
+    p <- prep()
+    if (is.null(p$latest_pay_key)) return(NULL)
+    keys <- seq(p$latest_pay_key, p$latest_pay_key - 23L)
+    selectInput("ud_val_month", "Valuation month", choices = stats::setNames(keys, month_key_label(keys)),
+                selected = p$val_key, width = "260px")
+  })
+
+  output$ud_trial <- renderUI({
+    t <- trial()
+    if (is.na(hash)) div(class = "trial-pill used", "This visit's network address could not be read, so the free run on your own file",
+                         "is not available here. The sample file still runs. Write to ", contact_link(), " for a run.")
+    else if (isTRUE(t$used)) div(class = "trial-pill used", sprintf("This network address used its free run%s.",
+      if (!is.na(t$date)) paste(" on", format(as.Date(t$date), "%d %B %Y")) else ""),
+      " The sample file still runs. For another run on your own data, write to ", contact_link(), ".")
+    else div(class = "trial-pill ok", "One free run on your own file is available from this network address.",
+             "Checking a file does not use it; only a finished run does.")
+  })
+
+  can_run <- reactive({
+    p <- prep()
+    !is.null(p) && isTRUE(p$ok) && !is.na(hash) && !isTRUE(trial()$used)
+  })
+  observe({
+    req(identical(input$nav, "Your data"))  # look the address up only when someone opens this page
+    updateActionButton(session, "ud_run", disabled = !can_run())
+  })
+  # ChainLadder and its dependencies take several seconds to load the first time. Load them while the
+  # visitor reads the page, after it has drawn, rather than when they press Run.
+  observeEvent(input$nav, {
+    if (identical(input$nav, "Your data") && !isNamespaceLoaded("ChainLadder"))
+      later::later(function() suppressPackageStartupMessages(requireNamespace("ChainLadder", quietly = TRUE)), 1)
+  })
+  output$ud_run_why <- renderUI({
+    p <- prep()
+    tags$span(class = "muted", if (is.na(hash) || isTRUE(trial()$used)) "The free run from this address is used."
+      else if (is.null(p)) "Upload a claims file and it is checked straight away."
+      else if (!isTRUE(p$ok)) "Fix the failed checks and upload the file again."
+      else "This uses your one free run.")
+  })
+
+  output$ud_checks <- renderUI({
+    p <- prep()
+    if (is.null(p)) return(NULL)
+    ck <- p$checks
+    n_fail <- sum(ck$status == "Failed"); n_warn <- sum(ck$status == "Warning")
+    s <- function(n) if (n == 1) "" else "s"
+    tagList(
+      div(class = paste("check-summary", if (n_fail) "fail" else if (n_warn) "warn" else "pass"),
+        if (n_fail) sprintf("%d check%s failed. Fix the file and upload it again.", n_fail, s(n_fail))
+        else if (n_warn) sprintf("Ready to run, with %d warning%s to read first.", n_warn, s(n_warn))
+        else "Ready to run. Every check passed."),
+      tags$ul(class = "check-list", lapply(seq_len(nrow(ck)), function(i)
+        tags$li(class = tolower(ck$status[i]), tags$span(class = "check-status", ck$status[i]),
+                tags$span(tags$b(ck$check[i], .noWS = "after"), ". ", ck$detail[i])))))
+  })
+
+  start_run <- function(p, source_label) {
+    r <- withProgress(message = "Running chain ladder, Mack and the bootstrap", value = 0.4,
+      tryCatch(run_upload(p, cfg, lg), error = function(e) { lg$add("Failed", "The run stopped: ", conditionMessage(e)); NULL }))
+    if (!is.null(r)) {
+      # The slider moves in steps of 0.1%, so start BF at the default rounded to that step.
+      if (!is.null(r$elr)) r$elr <- round(min(max(r$elr, up$elr_slider_min), up$elr_slider_max), 3)
+      r$source <- source_label; last_elr(r$elr); run(r)
+    }
+    r
+  }
+  observeEvent(input$ud_run, {
+    p <- prep()
+    if (is.null(p) || !isTRUE(p$ok)) return()
+    if (is.na(hash)) { lg$add("Trial", "The network address could not be read, so the free run is not available."); touch(); return() }
+    t <- TRIALS$used(hash)
+    if (isTRUE(t$used)) { lg$add("Trial", "This network address has already used its free run."); trial_tick(trial_tick() + 1); touch(); return() }
+    lg$add("Run", "Free run started on ", files()$name, ".")
+    r <- start_run(p, files()$name)
+    if (!is.null(r)) {
+      TRIALS$claim(hash)
+      lg$add("Trial", "The free run for this network address is now used.")
+      trial_tick(trial_tick() + 1)
+    }
+    touch()
+  })
+  observeEvent(input$ud_sample, {
+    lg$add("Run", "Sample run started. It does not use the free run.")
+    lg$add("File", sprintf("Sample claims file, SHA-256 %s.", file_fingerprint(SAMPLE_CLAIMS)))
+    lg$add("File", sprintf("Sample premium file, SHA-256 %s.", file_fingerprint(SAMPLE_PREMIUM)))
+    p <- prepare_upload(read_upload_csv(SAMPLE_CLAIMS, up$max_rows), read_upload_csv(SAMPLE_PREMIUM, up$max_rows), cfg, lg)
+    start_run(p, "the synthetic sample file")
+    touch()
+  })
+
+  elr <- reactive({
+    r <- run()
+    if (is.null(r$premium)) return(NULL)
+    if (is.null(input$ud_elr)) r$elr else input$ud_elr / 100
+  })
+  elr_settled <- debounce(elr, 1200)
+  observeEvent(elr_settled(), {
+    r <- run(); e <- elr_settled()
+    if (is.null(r) || is.null(e) || isTRUE(abs(e - last_elr()) < 5e-4)) return()
+    last_elr(e)
+    lg$add("Method", sprintf("Bornhuetter-Ferguson loss ratio set to %s: BF outstanding KES %s.", fmt_pct(e),
+                             formatC(sum(upload_bf(r, e)$reserve), format = "f", digits = 0, big.mark = ",")))
+    touch()
+  })
+
+  output$ud_log_text <- renderText({ log_tick(); paste(log_text(lg, CONTACT_EMAIL), collapse = "\n") })
+  log_download <- function() downloadHandler(
+    filename = function() paste0("health-ibnr-lab-log-", lg$ref, ".txt"),
+    content = function(file) writeLines(log_text(lg, CONTACT_EMAIL), file, useBytes = TRUE))
+  output$ud_log_dl <- log_download()
+  output$ud_log_dl2 <- log_download()
+  output$ud_tpl_claims <- downloadHandler(filename = "claims_template.csv",
+    content = function(file) writeLines(paste(UPLOAD_CLAIM_FIELDS$field, collapse = ","), file))
+  output$ud_tpl_premium <- downloadHandler(filename = "premium_template.csv",
+    content = function(file) writeLines(paste(UPLOAD_PREMIUM_FIELDS$field, collapse = ","), file))
+  output$ud_sample_claims <- downloadHandler(filename = "sample_claims.csv", content = function(file) file.copy(SAMPLE_CLAIMS, file))
+  output$ud_sample_premium <- downloadHandler(filename = "sample_premium.csv", content = function(file) file.copy(SAMPLE_PREMIUM, file))
+
+  results_table <- reactive({
+    r <- run(); req(r)
+    df <- upload_results_table(r, if (is.null(elr())) r$elr else elr())
+    kes <- grepl("_kes$", names(df))
+    df[kes] <- lapply(df[kes], round)
+    df$cdf_to_ultimate <- round(df$cdf_to_ultimate, 4)
+    df
+  })
+  output$ud_results_csv <- downloadHandler(filename = function() paste0("health-ibnr-lab-results-", lg$ref, ".csv"),
+    content = function(file) utils::write.csv(results_table(), file, row.names = FALSE, na = ""))
+  output$ud_tri_csv <- downloadHandler(filename = function() paste0("health-ibnr-lab-paid-triangle-", lg$ref, ".csv"),
+    content = function(file) utils::write.csv(upload_triangle_table(run()), file, row.names = FALSE, na = ""))
+
+  output$ud_results <- renderUI({
+    r <- run()
+    if (is.null(r)) return(NULL)
+    tot_os <- sum(r$cl$reserve)
+    elr_ui <- if (!is.null(r$premium)) {
+      tagList(h3("Bornhuetter-Ferguson"),
+        div(class = "controls", sliderInput("ud_elr", "BF expected loss ratio (prior)", min = round(100 * up$elr_slider_min),
+          max = round(100 * up$elr_slider_max), value = 100 * r$elr, step = 0.1, post = "%", width = "100%")),
+        uiOutput("ud_bf_take"))
+    }
+    section(paste("3. Results:", r$source),
+      div(class = "kpi-row",
+        kpi("Paid to date", fmt_kes_m(sum(r$cl$latest)), sprintf("%d accident months, valued at %s.", r$n_acc, month_key_label(r$val_key))),
+        kpi("Chain ladder outstanding", fmt_kes_m(tot_os), sprintf("%s. %s months of paid claims.", fmt_kes(tot_os),
+            formatC(tot_os / r$avg_paid, format = "f", digits = 1))),
+        kpi("Mack coefficient of variation", if (is.null(r$mack)) "Not fitted" else fmt_pct(r$mack$total_se / r$mack$total_reserve),
+            if (!is.null(r$mack)) sprintf("Standard error %s.", fmt_kes_m(r$mack$total_se)) else "See the log."),
+        kpi("Bootstrap 75th percentile", if (is.null(r$boot)) "Not run" else fmt_kes_m(r$boot$q[2]),
+            if (!is.null(r$boot)) sprintf("99.5th percentile %s. %s replicates.", fmt_kes_m(r$boot$q[3]), formatC(r$boot_R, big.mark = ","))
+            else "See the log.")),
+      plotOutput("ud_plot", height = "320px"), uiOutput("ud_plot_take"),
+      elr_ui,
+      if (!is.null(r$boot)) tagList(h3("Spread of the reserve"), plotOutput("ud_boot", height = "260px"), uiOutput("ud_boot_take")),
+      if (!is.null(r$rcl)) tagList(h3("Backlog check"),
+        layout_columns(col_widths = breakpoints(sm = 12, lg = c(6, 6)),
+          tagList(plotOutput("ud_ae", height = "280px"), uiOutput("ud_ae_take")),
+          tagList(plotOutput("ud_pipe", height = "280px"), uiOutput("ud_pipe_take"))),
+        uiOutput("ud_recv_take"))
+      else note_box("No backlog check", tags$p("Add report_month and amount_billed_kes to the file to get the received triangle, the pipeline and the backlog check.")),
+      h3("By accident month"),
+      DTOutput("ud_table", fill = FALSE),
+      div(class = "dl-row",
+        downloadButton("ud_results_csv", "Download results (CSV)", class = "btn-ghost"),
+        downloadButton("ud_tri_csv", "Download the paid triangle (CSV)", class = "btn-ghost"),
+        downloadButton("ud_log_dl2", "Download the log", class = "btn-ghost")),
+      tags$p(class = "muted", UPLOAD_DISCLAIMER))
+  })
+
+  output$ud_plot <- renderPlot({
+    r <- run(); req(r)
+    d <- rbind(data.frame(month = r$months, part = "Paid to date", kes = r$cl$latest),
+               data.frame(month = r$months, part = "Still to pay (chain ladder)", kes = r$cl$reserve))
+    d$part <- factor(d$part, c("Still to pay (chain ladder)", "Paid to date"))
+    nar <- is_narrow(session, "ud_plot")
+    ggplot(d, aes(month, kes, fill = part)) +
+      geom_col(width = 24, colour = COL$bg, linewidth = 0.3) +
+      scale_fill_manual(values = c("Paid to date" = COL$navy, "Still to pay (chain ladder)" = COL$amber)) +
+      scale_y_continuous(labels = kes_axis, expand = expansion(c(0, 0.04))) +
+      scale_x_date(date_breaks = if (nar) "12 months" else if (r$n_acc > 36) "6 months" else "3 months", date_labels = "%b %y") +
+      labs(x = "Accident month", y = "KES") + theme_lab()
+  }, res = 96)
+  output$ud_plot_take <- renderUI({
+    r <- run(); req(r)
+    k <- utils::tail(seq_len(r$n_acc), 3)
+    takeaway(sprintf(paste("The latest 3 accident months hold %s of the chain ladder outstanding. The newest month is",
+      "multiplied by %s, so a small change in what gets paid early moves the reserve a lot."),
+      fmt_pct(sum(r$cl$reserve[k]) / sum(r$cl$reserve)), formatC(r$cl$cdf[r$n_acc], format = "f", digits = 1)))
+  })
+  output$ud_bf_take <- renderUI({
+    r <- run(); e <- elr(); req(r, e)
+    bf <- upload_bf(r, e)
+    takeaway(sprintf(paste("At a prior loss ratio of %s, BF gives %s outstanding against chain ladder's %s. The slider",
+      "starts at %s, the %s."), fmt_pct(e), fmt_kes(sum(bf$reserve)), fmt_kes(sum(r$cl$reserve)), fmt_pct(r$elr_default), r$elr_basis))
+  })
+  output$ud_boot <- renderPlot({
+    r <- run(); req(r$boot)
+    lines <- data.frame(x = r$boot$q, lab = c("50th", "75th", "99.5th"), hj = c(1.12, -0.12, 1.12))
+    ggplot(data.frame(x = r$boot$totals[is.finite(r$boot$totals)]), aes(x)) +
+      geom_histogram(bins = 60, fill = "#a3b2d5", colour = COL$bg, linewidth = 0.2) +
+      geom_vline(data = lines, aes(xintercept = x), colour = COL$amber, linewidth = 0.8) +
+      geom_text(data = lines, aes(x = x, y = Inf, label = lab, hjust = hj), vjust = 1.5, colour = COL$ink, size = 3.6) +
+      scale_x_continuous(labels = kes_axis) + scale_y_continuous(expand = expansion(c(0, 0.08))) +
+      labs(x = "Total outstanding claims, KES", y = "Simulations") + theme_lab()
+  }, res = 96)
+  output$ud_boot_take <- renderUI({
+    r <- run(); req(r$boot)
+    takeaway(sprintf(paste("The bootstrap mean is %s, %s from the chain ladder. A reserve at the 75th percentile would",
+      "be %s, which is %s above the chain ladder."), fmt_kes(r$boot$mean), fmt_pct(abs(r$boot$mean / sum(r$cl$reserve) - 1)),
+      fmt_kes(r$boot$q[2]), fmt_kes(r$boot$q[2] - sum(r$cl$reserve))))
+  })
+  cal_month <- function(r, cal_idx) month_key_to_date(r$val_key - r$n_acc + cal_idx)
+  # Twelve monthly labels only fit on a wide chart.
+  month_breaks <- function(id) {
+    w <- session$clientData[[paste0("output_", id, "_width")]]
+    if (is.null(w) || w < 500) "3 months" else if (w < 900) "2 months" else "1 month"
+  }
+  output$ud_ae <- renderPlot({
+    r <- run(); req(r$ae)
+    d <- r$ae
+    d$month <- cal_month(r, d$cal_idx)
+    d$latest <- seq_len(nrow(d)) > nrow(d) - 3
+    ggplot(d, aes(month, ae, fill = latest)) +
+      geom_col(width = 22) + geom_hline(yintercept = 1, colour = COL$ink, linewidth = 0.6) +
+      scale_fill_manual(values = c(`TRUE` = COL$amber, `FALSE` = "#a3b2d5"), guide = "none") +
+      scale_y_continuous(labels = function(x) paste0(round(100 * x), "%"), expand = expansion(c(0, 0.06))) +
+      scale_x_date(date_breaks = month_breaks("ud_ae"), date_labels = "%b %y") +
+      labs(x = "Calendar month (amber: latest 3)", y = "Actual paid / expected") + theme_lab()
+  }, res = 96)
+  output$ud_ae_take <- renderUI({
+    r <- run(); req(r$ae)
+    d <- r$ae; k <- utils::tail(seq_len(nrow(d)), 3)
+    takeaway(sprintf(paste("In the latest 3 calendar months you paid %s of what your received claims and older payment",
+      "patterns lead us to expect. In the %d months before, it ran between %s and %s. A clear drop in the latest",
+      "months is what a payment slowdown looks like."), fmt_pct(sum(d$actual[k]) / sum(d$expected[k])), nrow(d) - 3L,
+      fmt_pct(min(d$ae[-k])), fmt_pct(max(d$ae[-k]))))
+  })
+  output$ud_pipe <- renderPlot({
+    r <- run(); req(r$trend)
+    d <- r$trend
+    d$month <- cal_month(r, d$cal_idx)
+    ggplot(d, aes(month, months_of_paid)) + geom_line(colour = COL$amber, linewidth = 1) + geom_point(colour = COL$amber, size = 2) +
+      scale_y_continuous(limits = c(0, NA), expand = expansion(c(0, 0.08))) +
+      scale_x_date(date_breaks = month_breaks("ud_pipe"), date_labels = "%b %y") +
+      labs(x = "Calendar month", y = "Pipeline, months of paid claims") + theme_lab()
+  }, res = 96)
+  output$ud_pipe_take <- renderUI({
+    r <- run(); req(r$trend)
+    d <- r$trend
+    takeaway(sprintf(paste("Received but unpaid claims are %s months of paid claims at valuation, against %s twelve",
+      "months earlier. A rising pipeline is the earliest warning of a backlog."),
+      formatC(utils::tail(d$months_of_paid, 1), format = "f", digits = 1), formatC(d$months_of_paid[1], format = "f", digits = 1)))
+  })
+  output$ud_recv_take <- renderUI({
+    r <- run(); req(r$rcl)
+    rec_os <- sum(r$rcl$ultimate) - sum(r$cl$latest)
+    takeaway(sprintf(paste("Received claims chain ladder gives %s outstanding, %s %s than paid chain ladder. Of the paid",
+      "chain ladder's outstanding, %s is pipeline: invoices already in but not yet paid. If the received figure is",
+      "well above the paid one, payments may have slowed; the Backlog page shows why paid chain ladder then falls short."),
+      fmt_kes(rec_os), fmt_pct(abs(rec_os / sum(r$cl$reserve) - 1)), if (rec_os >= sum(r$cl$reserve)) "more" else "less",
+      fmt_kes(sum(r$pipeline))))
+  })
+  output$ud_table <- renderDT({
+    df <- results_table()
+    show <- data.frame(`Accident month` = df$accident_month, `Paid to date` = df$paid_to_date_kes,
+      `Development months` = df$development_months, `To ultimate` = df$cdf_to_ultimate,
+      `CL ultimate` = df$cl_ultimate_kes, `CL outstanding` = df$cl_outstanding_kes, check.names = FALSE)
+    if (!is.null(df$mack_se_kes)) show$`Mack SE` <- df$mack_se_kes
+    if (!is.null(df$bf_outstanding_kes)) show$`BF outstanding` <- df$bf_outstanding_kes
+    if (!is.null(df$pipeline_kes)) show$Pipeline <- df$pipeline_kes
+    kes_cols <- which(!names(show) %in% c("Accident month", "Development months", "To ultimate"))
+    DT::formatRound(DT::formatRound(lab_dt(show, dom = "t", paging = FALSE, scrollY = "420px"), columns = kes_cols, digits = 0),
+                    columns = "To ultimate", digits = 3)
+  })
 }
 
 # App ------------------------------------------------------------------------
@@ -650,6 +1090,7 @@ ui <- page_navbar(
   nav_panel("Backlog", bl_ui()),
   nav_panel("IFRS 17", ifrs_ui()),
   nav_panel("Methods", meth_ui()),
+  nav_panel("Your data", ud_ui()),
   footer = div(class = "footer container-fluid main",
     sprintf("%s Valuation %s. Built in R with shiny, bslib and ChainLadder. Marion Peter.", SYNTHETIC_LABEL, val_label))
 )
@@ -662,6 +1103,7 @@ server <- function(input, output, session) {
   bl_server(input, output, session)
   ifrs_server(input, output, session)
   meth_server(input, output, session)
+  ud_server(input, output, session)
 }
 
 shinyApp(ui, server)

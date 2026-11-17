@@ -12,7 +12,20 @@ test-methods.R,hand-written chain ladder matches ChainLadder::MackChainLadder,pa
 test-methods.R,excluding diagonals matches MackChainLadder weights,passed,2
 test-methods.R,BF with ELR equal to the true loss ratio lands within 10% of the true outstanding,passed,1
 test-methods.R,bootstrap mean is within 2% of the chain ladder reserve,passed,2
+test-trial.R,the visitor is the rightmost public address in X-Forwarded-For,passed,3
+test-trial.R,an IPv6 address shares one free run with the rest of its /64 network,passed,5
+test-trial.R,the local store gives one run per address and keeps only a hash,passed,6
+test-trial.R,"the GitHub store remembers a run across restarts, one file per hash",passed,6
+test-trial.R,when GitHub cannot be reached the store falls back to the local folder,passed,3
 test-triangles.R,paid triangle reconciles to claim payments up to valuation,passed,1
 test-triangles.R,received triangle reconciles to claims reported up to valuation,passed,1
 test-triangles.R,no payment after valuation leaks into any triangle,passed,5
 test-triangles.R,payment lag never exceeds the cap,passed,2
+test-upload.R,the sample file passes every check,passed,3
+test-upload.R,an upload of the sample reproduces the base case paid chain ladder,passed,2
+test-upload.R,payments after the chosen valuation month stay out of the uploaded triangle,passed,2
+test-upload.R,a file without a required column fails and names the column,passed,2
+test-upload.R,unreadable months and amounts fail with their line numbers,passed,3
+test-upload.R,columns outside the template are dropped on arrival,passed,3
+test-upload.R,months and amounts are read in the accepted formats only,passed,2
+test-upload.R,"the run log records the checks, every method and the disclaimer",passed,9

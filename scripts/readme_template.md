@@ -20,6 +20,7 @@
 <p align="center">
   <a href="https://maidenpeter.shinyapps.io/health-ibnr-lab/"><b>Open the live app</b></a>
   &nbsp;&middot;&nbsp; <a href="#what-the-backlog-test-found">What it found</a>
+  &nbsp;&middot;&nbsp; <a href="#run-it-on-your-own-claims">Your own claims</a>
   &nbsp;&middot;&nbsp; <a href="#how-it-works">How it works</a>
   &nbsp;&middot;&nbsp; <a href="#run-it-locally">Run it locally</a>
 </p>
@@ -90,9 +91,20 @@ For the default slowdown ({{bl_n}} months, {{bl_x}} of due payments held back, {
 - **Paid chain ladder can pass its own back-test while it is badly short.** Holding out the latest month, its actual against expected is {{bt_cl_backlog}} with the slowdown (and {{bt_cl_base}} without), because the slowdown depresses the forecast and the actual together. The received claims chain ladder's A/E is {{bt_rec_backlog}}, which does flag it.
 - **The early warnings work.** The pipeline of received but unpaid claims rises to {{pipe_backlog}} months of paid claims against {{pipe_base}} without the slowdown, and an actual against expected heatmap anchored on received claims shows the slowed months as a cold band.
 
+## Run it on your own claims
+
+The **Your data** page runs the same methods on a claims extract you upload: paid and received triangles, chain ladder, Mack, an ODP bootstrap ({{up_boot}} replicates), Bornhuetter-Ferguson if you add earned premium, and the backlog check (actual against expected paid, and the pipeline trend).
+
+- **The format is fixed.** One row per claim invoice in a CSV, with `accident_month`, `payment_month` and `amount_paid_kes`, plus `report_month` and `amount_billed_kes` for the received view and `benefit_type` if you have it. An optional second file gives `earned_premium_kes` by `accident_month`. The page has templates and a sample file. At least {{up_min}} accident months (the latest {{up_max}} are used), up to {{up_rows}} rows and {{up_mb}} MB.
+- **Every step is logged.** The file's SHA-256 fingerprint, every check with the line numbers it flagged, every row left out and why, each method with its settings and result. The log downloads as a text file, alongside the results and the paid triangle as CSV.
+- **One free run per network address.** Checking a file is free, and so is running the sample. Only a scrambled fingerprint of the address (a salted SHA-256 hash) and the date of the run are kept. Uploaded files stay in memory for the visit and are never saved.
+
+> [!WARNING]
+> This tool has not been reviewed against real industry data, and no actuary has signed off its results. Its numbers are for discussion only and are not an actuarial opinion, a reserve to book, or advice. I am open to testing it: if you can share de-identified data where the reserve that was actually booked is known, and ideally how the claims ran off afterwards, I will compare this tool's estimate with the booked reserve and with what emerged. Write to [{{contact}}](mailto:{{contact}}).
+
 ## Tour of the app
 
-Seven pages. Click any picture to see the whole page.
+Eight pages. Click any picture to see the whole page.
 
 <table>
   <tr>
@@ -108,7 +120,8 @@ Seven pages. Click any picture to see the whole page.
     <td width="50%" valign="top"><a href="assets/screenshots/6-ifrs17.png"><img src="assets/readme/pages/6-ifrs17.png" width="100%" alt="The IFRS 17 page"></a><br><b>IFRS 17.</b> From best estimate to LIC, with a live confidence level slider.</td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><a href="assets/screenshots/7-methods.png"><img src="assets/readme/pages/7-methods.png" width="50%" alt="The Methods page"></a><br><b>Methods.</b> Every assumption, every method choice, the limitations and the test results.</td>
+    <td width="50%" valign="top"><a href="assets/screenshots/7-methods.png"><img src="assets/readme/pages/7-methods.png" width="100%" alt="The Methods page"></a><br><b>Methods.</b> Every assumption, every method choice, the limitations and the test results.</td>
+    <td width="50%" valign="top"><a href="assets/screenshots/8-yourdata.png"><img src="assets/readme/pages/8-yourdata.png" width="100%" alt="The Your data page"></a><br><b>Your data.</b> Upload your own claims, check them, run the methods once and download the log.</td>
   </tr>
 </table>
 
@@ -167,8 +180,9 @@ The discount curve is illustrative, not a published curve. Most of these claims 
 ## Inside the repo
 
 ```
-app.R                     the Shiny app; it only reads precomputed results
-R/                        generator, triangles, methods, backlog, IFRS 17, formatting
+app.R                     the Shiny app; it reads precomputed results, and runs uploads live
+R/                        generator, triangles, methods, backlog, IFRS 17, uploads, the free run store
+scripts/setup_trial_store.R  one-time setup of the private store behind the free run limit
 config.yml                every assumption, each with a one line comment
 scripts/build_results.R   generates the data, runs every method and the tests
 scripts/render_readme.R   fills in this README and draws its figure
