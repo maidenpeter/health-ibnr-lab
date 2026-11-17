@@ -122,7 +122,7 @@ tri_ui <- function() {
     )),
     section("Triangle, KES thousands, development months 1 to 24", DTOutput("tri_table", fill = FALSE), uiOutput("tri_take")),
     section("Development factors",
-      layout_columns(col_widths = breakpoints(sm = 12, lg = c(5, 7)),
+      layout_columns(col_widths = breakpoints(sm = 12, xl = c(5, 7)),
         DTOutput("tri_factors", fill = FALSE),
         tagList(plotOutput("tri_heat", height = "460px"), uiOutput("tri_heat_take"))))
   )
@@ -165,15 +165,16 @@ tri_server <- function(input, output, session) {
     lr <- B$link_tables[[key()]][, seq_len(nd)]
     d <- data.frame(acc = rep(seq_len(n_acc), nd), dev = rep(seq_len(nd), each = n_acc), rel = as.vector(lr))
     d <- d[!is.na(d$rel), ]
+    nar <- is_narrow(session, "tri_heat")
     ggplot(d, aes(dev, factor(acc, levels = n_acc:1), fill = rel)) +
       geom_tile(colour = COL$bg, linewidth = 0.4) +
       scale_fill_gradient2(low = COL$navy, mid = COL$neutral, high = COL$amber, midpoint = 1,
-                           limits = c(0.9, 1.1), breaks = c(0.9, 1, 1.1), labels = c("10% below", "equal", "10% above"),
+                           limits = c(0.9, 1.1), breaks = c(0.9, 1, 1.1), labels = if (nar) c("-10%", "equal", "+10%") else c("10% below", "equal", "10% above"),
                            oob = scales::squish, name = "Link ratio against its column factor") +
       scale_y_discrete(labels = function(l) acc_lab[as.integer(l)], breaks = as.character(seq(1, n_acc, 3))) +
-      scale_x_continuous(breaks = seq_len(nd), expand = c(0, 0)) +
-      labs(x = "Development month (link from this month to the next)", y = NULL) +
-      guides(fill = guide_colourbar(title.position = "top", barwidth = unit(14, "lines"), barheight = unit(0.6, "lines"))) +
+      scale_x_continuous(breaks = if (nar) seq(1, nd, 2) else seq_len(nd), expand = c(0, 0)) +
+      labs(x = if (nar) "Development month" else "Development month (link from this month to the next)", y = NULL) +
+      guides(fill = guide_colourbar(title.position = "top", barwidth = unit(if (nar) 10 else 14, "lines"), barheight = unit(0.6, "lines"))) +
       theme_lab() + theme(legend.title = element_text(size = 10, colour = COL$ink2), panel.grid = element_blank())
   }, res = 96)
   output$tri_heat_take <- renderUI({
@@ -194,8 +195,8 @@ res_ui <- function() {
         "same pattern but replaces the paid to date in the young months with a prior: ELR times earned premium.",
         "The selected basis uses BF for the latest %d accident months, where chain ladder leans hardest on very",
         "little data, and chain ladder before that."), bf_n)),
-    div(class = "controls", sliderInput("elr", "BF expected loss ratio (prior)", min = cfg$methods$elr_slider_min,
-        max = cfg$methods$elr_slider_max, value = cfg$methods$bf_elr, step = 0.01, width = "100%")),
+    div(class = "controls", sliderInput("elr", "BF expected loss ratio (prior)", min = round(100 * cfg$methods$elr_slider_min),
+        max = round(100 * cfg$methods$elr_slider_max), value = round(100 * cfg$methods$bf_elr), step = 1, post = "%", width = "100%")),
     uiOutput("res_kpis"),
     section("Ultimates for the latest 12 accident months", plotOutput("res_plot", height = "360px"), uiOutput("res_take")),
     section("Outstanding claims (pipeline plus IBNR), by accident month", uiOutput("res_split"), DTOutput("res_table", fill = FALSE))
@@ -204,7 +205,7 @@ res_ui <- function() {
 
 res_server <- function(input, output, session) {
   bf <- reactive({
-    ult <- O$paid + input$elr * O$premium * (1 - 1 / O$cdf)
+    ult <- O$paid + (input$elr / 100) * O$premium * (1 - 1 / O$cdf)
     sel <- ifelse(seq_len(n_acc) %in% latest_k, ult, O$cl_ultimate)
     list(ult = ult, reserve = ult - O$paid, sel_ult = sel, sel_res = sel - O$paid)
   })
@@ -212,7 +213,7 @@ res_server <- function(input, output, session) {
     b <- bf()
     div(class = "kpi-row",
       kpi("Chain ladder outstanding", fmt_kes_m(B$cl_total), fmt_kes(B$cl_total)),
-      kpi("BF outstanding", fmt_kes_m(sum(b$reserve)), sprintf("At ELR %s.", fmt_pct(input$elr, 0))),
+      kpi("BF outstanding", fmt_kes_m(sum(b$reserve)), sprintf("At ELR %s.", fmt_pct((input$elr / 100), 0))),
       kpi("Selected outstanding", fmt_kes_m(sum(b$sel_res)), sprintf("BF for the latest %d months.", bf_n)),
       kpi("Mack standard error", fmt_kes_m(B$mack$total_se), sprintf("CV %s on the chain ladder reserve.", fmt_pct(H$mack_cv))))
   })
@@ -224,23 +225,25 @@ res_server <- function(input, output, session) {
       data.frame(month = months[k], series = "BF", kes = b$ult[k]),
       data.frame(month = months[k], series = "True ultimate (known only because the data is synthetic)", kes = O$true_ultimate[k]))
     lv <- c("Chain ladder", "BF", "True ultimate (known only because the data is synthetic)")
+    nar <- is_narrow(session, "res_plot")
+    leg_lab <- if (nar) wrap_lab(30) else ggplot2::waiver()
     pts$series <- factor(pts$series, lv)
     ggplot() +
       geom_col(data = data.frame(month = months[k], kes = O$paid[k]), aes(month, kes), fill = "#dcd9d0", width = 22) +
       geom_point(data = pts, aes(month, kes, colour = series, shape = series), size = 3.2, stroke = 1.2,
                  position = position_dodge(width = 14)) +
-      scale_colour_manual(values = setNames(c(COL$amber, COL$navy, COL$ink), lv)) +
-      scale_shape_manual(values = setNames(c(16, 17, 1), lv)) +
+      scale_colour_manual(values = setNames(c(COL$amber, COL$navy, COL$ink), lv), labels = leg_lab) +
+      scale_shape_manual(values = setNames(c(16, 17, 1), lv), labels = leg_lab) +
       scale_y_continuous(labels = kes_axis, limits = c(0, NA), expand = expansion(c(0, 0.05))) +
-      scale_x_date(date_breaks = if (is_narrow(session, "res_plot")) "3 months" else "1 month", date_labels = "%b %y") +
+      scale_x_date(date_breaks = if (nar) "3 months" else "1 month", date_labels = "%b %y") +
       labs(x = "Accident month (grey bar is paid to date)", y = "KES") +
-      theme_lab() + guides(colour = guide_legend(ncol = if (is_narrow(session, "res_plot")) 1 else 3))
+      theme_lab() + guides(colour = guide_legend(ncol = if (nar) 1 else 3))
   }, res = 96)
   output$res_take <- renderUI({
     b <- bf()
     takeaway(sprintf(paste("For the latest %d accident months, BF at ELR %s gives %s outstanding against chain",
       "ladder's %s. The true figure, which no reserving team would have, is %s."),
-      bf_n, fmt_pct(input$elr, 0), fmt_kes(sum(b$reserve[latest_k])), fmt_kes(sum(O$cl_reserve[latest_k])),
+      bf_n, fmt_pct((input$elr / 100), 0), fmt_kes(sum(b$reserve[latest_k])), fmt_kes(sum(O$cl_reserve[latest_k])),
       fmt_kes(sum(O$true_ultimate[latest_k] - O$paid[latest_k]))))
   })
   output$res_split <- renderUI({
@@ -300,11 +303,12 @@ unc_ui <- function() {
 unc_server <- function(input, output, session) {
   output$unc_plot <- renderPlot({
     q <- c(H$boot_p50_kes, H$boot_p75_kes, H$boot_p995_kes)
-    lines <- data.frame(x = q, lab = c("50th", "75th", "99.5th"))
+    # 50th sits left of its line and 75th right of it, so the two never collide; 99.5th sits left so it stays inside.
+    lines <- data.frame(x = q, lab = c("50th", "75th", "99.5th"), hj = c(1.12, -0.12, 1.12))
     ggplot(data.frame(x = B$boot$totals), aes(x)) +
       geom_histogram(bins = 70, fill = "#a3b2d5", colour = COL$bg, linewidth = 0.2) +
       geom_vline(data = lines, aes(xintercept = x), colour = COL$amber, linewidth = 0.8) +
-      geom_text(data = lines, aes(x = x, y = Inf, label = lab), vjust = 1.5, hjust = -0.1, colour = COL$ink, size = 3.6) +
+      geom_text(data = lines, aes(x = x, y = Inf, label = lab, hjust = hj), vjust = 1.5, colour = COL$ink, size = 3.6) +
       scale_x_continuous(labels = kes_axis) +
       scale_y_continuous(expand = expansion(c(0, 0.08))) +
       labs(x = "Total outstanding claims, KES", y = "Simulations") + theme_lab()
@@ -384,9 +388,9 @@ bl_server <- function(input, output, session) {
   })
   output$bl_table <- renderDT({
     t <- sc()$totals
-    df <- data.frame(Method = t$label, `Outstanding` = t$outstanding, `True outstanding` = t$true_outstanding,
+    df <- data.frame(Method = t$label, `Outstanding` = t$outstanding,
                      `Error` = t$error, `Error, % of true` = fmt_pct(t$error_pct), check.names = FALSE)
-    DT::formatRound(lab_dt(df, dom = "t"), columns = 2:4, digits = 0)
+    DT::formatRound(lab_dt(df, dom = "t"), columns = 2:3, digits = 0)
   })
   output$bl_parts <- renderPlot({
     p <- sc()$cl_error_parts
@@ -526,21 +530,23 @@ ifrs_server <- function(input, output, session) {
   })
   output$ifrs_steps <- renderPlot({
     l <- lic()
-    steps <- data.frame(step = c("Best\nestimate", "Discounting", "Present\nvalue", "Risk\nadjustment", "LIC"),
+    nar <- is_narrow(session, "ifrs_steps")
+    # Horizontal so the step names and the amounts both have room at any width.
+    steps <- data.frame(step = c("Best estimate", "Discounting", "Present value", "Risk adjustment", "LIC"),
       start = c(0, l$present_value, 0, l$present_value, 0),
       end = c(l$best_estimate, l$best_estimate, l$present_value, l$lic_discounted, l$lic_discounted),
       kind = c("total", "change", "total", "change", "total"))
-    steps$step <- factor(steps$step, steps$step)
-    steps$i <- seq_len(nrow(steps))
+    steps$i <- rev(seq_len(nrow(steps)))
+    steps$lab <- paste0(c("", "-", "", "+", ""), fmt_kes_m(abs(steps$end - steps$start)))
     ggplot(steps) +
-      geom_rect(aes(xmin = i - 0.32, xmax = i + 0.32, ymin = start, ymax = end, fill = kind)) +
-      geom_text(aes(x = i, y = pmax(start, end),
-                    label = ifelse(i == 2, paste0("-", fmt_kes_m(end - start)), ifelse(i == 4, paste0("+", fmt_kes_m(end - start)), fmt_kes_m(end - start)))),
-                vjust = -0.5, size = 3.5, colour = COL$ink) +
+      geom_rect(aes(ymin = i - 0.32, ymax = i + 0.32, xmin = start, xmax = end, fill = kind)) +
+      geom_text(aes(y = i, x = pmax(start, end), label = lab), hjust = -0.08, size = if (nar) 3.1 else 3.5, colour = COL$ink) +
       scale_fill_manual(values = c(total = COL$navy, change = COL$amber), guide = "none") +
-      scale_x_continuous(breaks = steps$i, labels = levels(steps$step)) +
-      scale_y_continuous(labels = kes_axis, expand = expansion(c(0, 0.1))) +
-      labs(x = NULL, y = "KES") + theme_lab() + theme(panel.grid.major.x = element_blank())
+      scale_y_continuous(breaks = steps$i, labels = steps$step) +
+      scale_x_continuous(labels = kes_axis, limits = c(0, max(steps$end) * if (nar) 1.45 else 1.3), expand = c(0, 0),
+                         n.breaks = if (nar) 3 else 5) +
+      labs(x = "KES", y = NULL) + theme_lab() +
+      theme(panel.grid.major.y = element_blank(), axis.text.y = element_text(colour = COL$ink, size = if (nar) 9 else 11))
   }, res = 96)
   output$ifrs_steps_take <- renderUI({
     l <- lic()
@@ -635,7 +641,7 @@ ui <- page_navbar(
   theme = lab_theme(),
   fillable = FALSE,
   navbar_options = navbar_options(bg = COL$bar, theme = "dark", collapsible = TRUE),
-  header = tags$head(tags$link(rel = "stylesheet", href = "styles.css"),
+  header = tags$head(tags$link(rel = "stylesheet", href = "styles.css"), tags$script(src = "tables.js"),
                      tags$meta(name = "description", content = "Health IBNR reserving on a synthetic medical book, in R.")),
   nav_panel("Book", book_ui()),
   nav_panel("Triangles", tri_ui()),

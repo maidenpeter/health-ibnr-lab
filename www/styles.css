@@ -58,4 +58,23 @@ table.dataTable thead th { color: #52514e; font-weight: 600; border-bottom: 1px 
   .brand-tag { display: none; }
 }
 
-table.dataTable td, table.dataTable th { white-space: nowrap; }
+/* Tables: headers and text wrap, numbers stay on one line. A table that is still too wide scrolls inside its own card. */
+table.dataTable thead th { white-space: normal; vertical-align: bottom; }
+table.dataTable tbody td { white-space: normal; overflow-wrap: break-word; }
+table.dataTable td.num, table.dataTable td.dt-right { white-space: nowrap; overflow-wrap: normal; font-variant-numeric: tabular-nums; }
+table.dataTable td.short { white-space: nowrap; }
+.dataTables_wrapper { background: #ffffff; border: 1px solid #e6e4dd; border-radius: 4px; padding: 0.4rem 0.7rem 0.5rem 0.7rem; }
+.dataTables_wrapper .scroll-hint { display: none; font-size: 0.74rem; color: #6b6a66; margin: 0.15rem 0 0.35rem 0; }
+.dataTables_wrapper.is-scrollable .scroll-hint { display: block; }
+.dataTables_wrapper.is-scrollable .dataTables_scroll { position: relative; }
+.dataTables_wrapper.is-scrollable .dataTables_scroll::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 28px;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0), #ffffff); pointer-events: none; }
+
+/* Sliders: keep the end labels inside the controls box. */
+.controls .irs { margin-left: 0.9rem; margin-right: 0.9rem; }
+
+@media (max-width: 640px) {
+  table.dataTable { font-size: 0.78rem; }
+  table.dataTable.compact thead th, table.dataTable.compact tbody td { padding: 4px 6px; }
+  .dataTables_wrapper { padding: 0.3rem 0.45rem 0.4rem 0.45rem; }
+}

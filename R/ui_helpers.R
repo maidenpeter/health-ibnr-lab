@@ -72,8 +72,18 @@ theme_lab <- function(base_size = 13) {
     )
 }
 
-# DT table with the lab's defaults: scrolls sideways on a phone, no search box clutter.
+# TRUE for a column of numbers, KES amounts or percentages, however they are formatted.
+num_like <- function(x) is.numeric(x) || all(is.na(x) | grepl("^\\s*(KES )?[-+]?[0-9][0-9,]*([.][0-9]+)?%?\\s*$", x))
+
+# DT table with the lab's defaults. Number columns are right aligned and never wrap; text and headers wrap,
+# so a table fits its column where it can and scrolls inside its own box where it cannot.
 lab_dt <- function(df, page_length = 12, dom = "tip", ...) {
+  is_num <- vapply(df, num_like, logical(1))
+  is_short <- !is_num & vapply(df, function(x) max(nchar(as.character(x)), 0, na.rm = TRUE) <= 12, logical(1))
+  defs <- list()
+  if (any(is_num)) defs <- c(defs, list(list(className = "dt-right num", targets = as.list(which(is_num) - 1))))
+  if (any(is_short)) defs <- c(defs, list(list(className = "short", targets = as.list(which(is_short) - 1))))
   DT::datatable(df, rownames = FALSE, class = "compact stripe", fillContainer = FALSE,
-                options = list(pageLength = page_length, dom = dom, scrollX = TRUE, ordering = FALSE, ...))
+                options = list(pageLength = page_length, dom = dom, scrollX = TRUE, ordering = FALSE,
+                               columnDefs = defs, ...))
 }
