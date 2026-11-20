@@ -126,6 +126,47 @@ read_upload_csv <- function(path, max_rows) {
                     nrows = max_rows + 1, showProgress = FALSE, encoding = "UTF-8")
 }
 
+# Excel uploads: the first sheet, read as text in one pass. A date typed into a month column arrives as Excel's
+# serial day number and is turned back into YYYY-MM-DD, the form parse_month reads (a date and time keeps its
+# date), so an Excel file goes through exactly the same checks as a CSV.
+XLSX_TYPE <- "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+is_excel_name <- function(name) endsWith(tolower(name), ".xlsx")
+read_upload_excel <- function(path, max_rows) {
+  x <- data.table::as.data.table(readxl::read_excel(path, sheet = 1, col_types = "text", n_max = max_rows + 1,
+                                                    .name_repair = "minimal"))
+  for (k in names(x)) {
+    v <- x[[k]]
+    v[!is.na(v) & trimws(v) %in% c("", "NA", "N/A", "NULL")] <- NA_character_
+    if (grepl("month$", norm_names(k))) {
+      serial <- !is.na(v) & grepl("^[0-9]{5}([.][0-9]+)?$", v)
+      if (any(serial)) v[serial] <- format(as.Date(floor(as.numeric(v[serial])), origin = "1899-12-30"), "%Y-%m-%d")
+    }
+    data.table::set(x, j = k, value = v)
+  }
+  x
+}
+read_upload <- function(path, name, max_rows) {
+  if (is_excel_name(name)) read_upload_excel(path, max_rows) else read_upload_csv(path, max_rows)
+}
+
+# Downloads lead with Excel (and the log with HTML); the CSV versions stay for anyone who wants them.
+template_sheets <- function(fields) {
+  blank <- as.data.frame(stats::setNames(replicate(nrow(fields), character(0), simplify = FALSE), fields$field),
+                         stringsAsFactors = FALSE, check.names = FALSE)
+  list(Template = blank, Fields = fields)
+}
+sample_sheet <- function(path) {
+  x <- data.table::fread(path, colClasses = "character", na.strings = c("", "NA"), showProgress = FALSE)
+  for (k in grep("_kes$", names(x), value = TRUE)) data.table::set(x, j = k, value = parse_amount(x[[k]]))
+  as.data.frame(x)
+}
+log_html <- function(lines) {
+  esc <- function(s) gsub(">", "&gt;", gsub("<", "&lt;", gsub("&", "&amp;", s, fixed = TRUE), fixed = TRUE), fixed = TRUE)
+  paste0("<!doctype html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>Health IBNR Lab: run log</title>",
+         "<style>body{font:14px/1.5 Consolas,Menlo,monospace;margin:2em;color:#1d2430}pre{white-space:pre-wrap}</style>",
+         "</head><body><pre>", paste(esc(lines), collapse = "\n"), "</pre></body></html>")
+}
+
 file_fingerprint <- function(path) digest::digest(file = path, algo = "sha256")
 
 # Checks ----------------------------------------------------------------------

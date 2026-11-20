@@ -655,6 +655,8 @@ meth_server <- function(input, output, session) {
 
 SAMPLE_CLAIMS <- "data/sample_claims.csv"
 SAMPLE_PREMIUM <- "data/sample_premium.csv"
+# A CSV download as a link in a sentence, with no space before the comma that follows it.
+csv_link <- function(id, label) { l <- downloadLink(id, label); l$.noWS <- c("before", "after"); l }
 
 field_table <- function(f) {
   tags$table(class = "field-table",
@@ -683,7 +685,7 @@ ud_ui <- function() {
         "this tool's estimate, the booked reserve, and what emerged. Write to ", contact_link(), ".")),
     uiOutput("ud_trial"),
     section("1. Put your claims in this format",
-      tags$p(class = "prose", "One row per claim invoice, saved as CSV. Column names must match the template; capitals",
+      tags$p(class = "prose", "One row per claim invoice, saved as Excel (.xlsx) or CSV. Column names must match the template; capitals",
         "and spaces do not matter. Months can be", tags$span(class = "nowrap", "YYYY-MM"), "or a full date,",
         tags$span(class = "nowrap", "YYYY-MM-DD,", .noWS = "after"), " and the day is ignored."),
       h3("Claims file"),
@@ -699,18 +701,21 @@ ud_ui <- function() {
       tags$p(class = "prose", "Needed only for Bornhuetter-Ferguson. One row per accident month."),
       field_table(UPLOAD_PREMIUM_FIELDS),
       div(class = "dl-row",
-        downloadButton("ud_tpl_claims", "Claims template", class = "btn-ghost"),
-        downloadButton("ud_tpl_premium", "Premium template", class = "btn-ghost"),
-        downloadButton("ud_sample_claims", "Sample claims file", class = "btn-ghost"),
-        downloadButton("ud_sample_premium", "Sample premium file", class = "btn-ghost")),
+        downloadButton("ud_tpl_claims", "Claims template (Excel)", class = "btn-ghost"),
+        downloadButton("ud_tpl_premium", "Premium template (Excel)", class = "btn-ghost"),
+        downloadButton("ud_sample_claims", "Sample claims file (Excel)", class = "btn-ghost"),
+        downloadButton("ud_sample_premium", "Sample premium file (Excel)", class = "btn-ghost")),
+      tags$p(class = "muted", "As CSV: ", csv_link("ud_tpl_claims_csv", "claims template"), ", ",
+        csv_link("ud_tpl_premium_csv", "premium template"), ", ", csv_link("ud_sample_claims_csv", "sample claims"), ", ",
+        csv_link("ud_sample_premium_csv", "sample premium"), "."),
       tags$p(class = "muted", "The sample is this lab's synthetic book as it stood at valuation, in the template format.",
         "Run on it, and the chain ladder matches the Reserves page.")),
     section("2. Upload and check",
       div(class = "controls",
         layout_columns(col_widths = breakpoints(sm = 12, md = c(6, 6)),
-          fileInput("ud_claims", "Claims file (CSV)", accept = c(".csv", "text/csv"), buttonLabel = "Choose file",
+          fileInput("ud_claims", "Claims file (Excel or CSV)", accept = c(".xlsx", XLSX_TYPE, ".csv", "text/csv"), buttonLabel = "Choose file",
                     placeholder = "No file chosen", width = "100%"),
-          fileInput("ud_premium", "Earned premium file (CSV, optional)", accept = c(".csv", "text/csv"),
+          fileInput("ud_premium", "Earned premium file (Excel or CSV, optional)", accept = c(".xlsx", XLSX_TYPE, ".csv", "text/csv"),
                     buttonLabel = "Choose file", placeholder = "No file chosen", width = "100%")),
         uiOutput("ud_val")),
       uiOutput("ud_checks"),
@@ -755,8 +760,8 @@ ud_server <- function(input, output, session) {
   read_file <- function(f, what) {
     lg$add("File", sprintf("%s file received: %s, %s bytes, SHA-256 %s.", what, f$name,
                            formatC(f$size, format = "d", big.mark = ","), file_fingerprint(f$datapath)))
-    tryCatch(read_upload_csv(f$datapath, up$max_rows),
-             error = function(e) { lg$add("Failed", f$name, " could not be read as CSV: ", conditionMessage(e)); NULL })
+    tryCatch(read_upload(f$datapath, f$name, up$max_rows),
+             error = function(e) { lg$add("Failed", f$name, " could not be read as an Excel or CSV file: ", conditionMessage(e)); NULL })
   }
   do_check <- function(val_key = NULL) {
     fl <- files()
@@ -764,7 +769,7 @@ ud_server <- function(input, output, session) {
     run(NULL)
     lg$add("Check", "Checking ", fl$name, if (!is.null(fl$premium_name)) paste0(" with ", fl$premium_name) else "", ".")
     p <- if (is.null(fl$raw)) list(ok = FALSE, checks = data.frame(status = "Failed", check = "File",
-                                   detail = "The file could not be read as CSV.", stringsAsFactors = FALSE))
+                                   detail = "The file could not be read as an Excel or CSV file.", stringsAsFactors = FALSE))
          else prepare_upload(fl$raw, fl$premium_raw, cfg, lg, val_key)
     lg$add(if (p$ok) "Check" else "Failed", if (p$ok) "The file is ready to run." else "The file cannot be run until the failed checks are fixed.")
     prep(p)
@@ -901,16 +906,22 @@ ud_server <- function(input, output, session) {
 
   output$ud_log_text <- renderText({ log_tick(); paste(log_text(lg, CONTACT_EMAIL), collapse = "\n") })
   log_download <- function() downloadHandler(
-    filename = function() paste0("health-ibnr-lab-log-", lg$ref, ".txt"),
-    content = function(file) writeLines(log_text(lg, CONTACT_EMAIL), file, useBytes = TRUE))
+    filename = function() paste0("health-ibnr-lab-log-", lg$ref, ".html"),
+    content = function(file) writeLines(log_html(log_text(lg, CONTACT_EMAIL)), file, useBytes = TRUE), contentType = "text/html")
   output$ud_log_dl <- log_download()
   output$ud_log_dl2 <- log_download()
-  output$ud_tpl_claims <- downloadHandler(filename = "claims_template.csv",
+  xlsx_download <- function(name, sheets) downloadHandler(filename = name, contentType = XLSX_TYPE,
+    content = function(file) writexl::write_xlsx(sheets(), file))
+  output$ud_tpl_claims <- xlsx_download("claims_template.xlsx", function() template_sheets(UPLOAD_CLAIM_FIELDS))
+  output$ud_tpl_premium <- xlsx_download("premium_template.xlsx", function() template_sheets(UPLOAD_PREMIUM_FIELDS))
+  output$ud_sample_claims <- xlsx_download("sample_claims.xlsx", function() list(Claims = sample_sheet(SAMPLE_CLAIMS)))
+  output$ud_sample_premium <- xlsx_download("sample_premium.xlsx", function() list(Premium = sample_sheet(SAMPLE_PREMIUM)))
+  output$ud_tpl_claims_csv <- downloadHandler(filename = "claims_template.csv",
     content = function(file) writeLines(paste(UPLOAD_CLAIM_FIELDS$field, collapse = ","), file))
-  output$ud_tpl_premium <- downloadHandler(filename = "premium_template.csv",
+  output$ud_tpl_premium_csv <- downloadHandler(filename = "premium_template.csv",
     content = function(file) writeLines(paste(UPLOAD_PREMIUM_FIELDS$field, collapse = ","), file))
-  output$ud_sample_claims <- downloadHandler(filename = "sample_claims.csv", content = function(file) file.copy(SAMPLE_CLAIMS, file))
-  output$ud_sample_premium <- downloadHandler(filename = "sample_premium.csv", content = function(file) file.copy(SAMPLE_PREMIUM, file))
+  output$ud_sample_claims_csv <- downloadHandler(filename = "sample_claims.csv", content = function(file) file.copy(SAMPLE_CLAIMS, file))
+  output$ud_sample_premium_csv <- downloadHandler(filename = "sample_premium.csv", content = function(file) file.copy(SAMPLE_PREMIUM, file))
 
   results_table <- reactive({
     r <- run(); req(r)
@@ -920,6 +931,11 @@ ud_server <- function(input, output, session) {
     df$cdf_to_ultimate <- round(df$cdf_to_ultimate, 4)
     df
   })
+  output$ud_results_xlsx <- downloadHandler(filename = function() paste0("health-ibnr-lab-results-", lg$ref, ".xlsx"),
+    contentType = XLSX_TYPE,
+    content = function(file) writexl::write_xlsx(list(
+      `By accident month` = results_table(), `Paid triangle` = upload_triangle_table(run()),
+      Notes = data.frame(Note = c(paste("Reference:", lg$ref), UPLOAD_DISCLAIMER))), file))
   output$ud_results_csv <- downloadHandler(filename = function() paste0("health-ibnr-lab-results-", lg$ref, ".csv"),
     content = function(file) utils::write.csv(results_table(), file, row.names = FALSE, na = ""))
   output$ud_tri_csv <- downloadHandler(filename = function() paste0("health-ibnr-lab-paid-triangle-", lg$ref, ".csv"),
@@ -957,9 +973,10 @@ ud_server <- function(input, output, session) {
       h3("By accident month"),
       DTOutput("ud_table", fill = FALSE),
       div(class = "dl-row",
-        downloadButton("ud_results_csv", "Download results (CSV)", class = "btn-ghost"),
-        downloadButton("ud_tri_csv", "Download the paid triangle (CSV)", class = "btn-ghost"),
+        downloadButton("ud_results_xlsx", "Download results and the paid triangle (Excel)", class = "btn-ghost"),
         downloadButton("ud_log_dl2", "Download the log", class = "btn-ghost")),
+      tags$p(class = "muted", "As CSV: ", csv_link("ud_results_csv", "results by accident month"), ", ",
+        csv_link("ud_tri_csv", "paid triangle"), "."),
       tags$p(class = "muted", UPLOAD_DISCLAIMER))
   })
 

@@ -95,8 +95,8 @@ For the default slowdown ({{bl_n}} months, {{bl_x}} of due payments held back, {
 
 The **Your data** page runs the same methods on a claims extract you upload: paid and received triangles, chain ladder, Mack, an ODP bootstrap ({{up_boot}} replicates), Bornhuetter-Ferguson if you add earned premium, and the backlog check (actual against expected paid, and the pipeline trend).
 
-- **The format is fixed.** One row per claim invoice in a CSV, with `accident_month`, `payment_month` and `amount_paid_kes`, plus `report_month` and `amount_billed_kes` for the received view and `benefit_type` if you have it. An optional second file gives `earned_premium_kes` by `accident_month`. The page has templates and a sample file. At least {{up_min}} accident months (the latest {{up_max}} are used), up to {{up_rows}} rows and {{up_mb}} MB.
-- **Every step is logged.** The file's SHA-256 fingerprint, every check with the line numbers it flagged, every row left out and why, each method with its settings and result. The log downloads as a text file, alongside the results and the paid triangle as CSV.
+- **The format is fixed.** One row per claim invoice in an Excel file or a CSV, with `accident_month`, `payment_month` and `amount_paid_kes`, plus `report_month` and `amount_billed_kes` for the received view and `benefit_type` if you have it. An optional second file gives `earned_premium_kes` by `accident_month`. The page has templates and a sample file, as Excel with CSV versions beside them. At least {{up_min}} accident months (the latest {{up_max}} are used), up to {{up_rows}} rows and {{up_mb}} MB.
+- **Every step is logged.** The file's SHA-256 fingerprint, every check with the line numbers it flagged, every row left out and why, each method with its settings and result. The log downloads as a web page, alongside the results and the paid triangle as one Excel workbook (each also as CSV).
 - **One free run per network address.** Checking a file is free, and so is running the sample. Only a scrambled fingerprint of the address (a salted SHA-256 hash) and the date of the run are kept. Uploaded files stay in memory for the visit and are never saved.
 
 > [!WARNING]

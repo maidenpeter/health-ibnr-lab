@@ -13,7 +13,7 @@
   <a href="https://maidenpeter.shinyapps.io/health-ibnr-lab/"><img alt="Live app" src="https://img.shields.io/badge/live_app-open-E8960C?style=flat-square"></a>
   <img alt="R 4.5.1" src="https://img.shields.io/badge/R-4.5.1-1d2430?style=flat-square&logo=r&logoColor=white">
   <img alt="ChainLadder 0.2.21" src="https://img.shields.io/badge/ChainLadder-0.2.21-3d5a9e?style=flat-square">
-  <img alt="30 of 30 tests passing" src="https://img.shields.io/badge/tests-30_of_30_passing-00998a?style=flat-square">
+  <img alt="33 of 33 tests passing" src="https://img.shields.io/badge/tests-33_of_33_passing-00998a?style=flat-square">
   <img alt="Synthetic data" src="https://img.shields.io/badge/data-synthetic-898781?style=flat-square">
 </p>
 
@@ -95,8 +95,8 @@ For the default slowdown (3 months, 30% of due payments held back, KES 45,065,58
 
 The **Your data** page runs the same methods on a claims extract you upload: paid and received triangles, chain ladder, Mack, an ODP bootstrap (1,000 replicates), Bornhuetter-Ferguson if you add earned premium, and the backlog check (actual against expected paid, and the pipeline trend).
 
-- **The format is fixed.** One row per claim invoice in a CSV, with `accident_month`, `payment_month` and `amount_paid_kes`, plus `report_month` and `amount_billed_kes` for the received view and `benefit_type` if you have it. An optional second file gives `earned_premium_kes` by `accident_month`. The page has templates and a sample file. At least 12 accident months (the latest 60 are used), up to 500,000 rows and 30 MB.
-- **Every step is logged.** The file's SHA-256 fingerprint, every check with the line numbers it flagged, every row left out and why, each method with its settings and result. The log downloads as a text file, alongside the results and the paid triangle as CSV.
+- **The format is fixed.** One row per claim invoice in an Excel file or a CSV, with `accident_month`, `payment_month` and `amount_paid_kes`, plus `report_month` and `amount_billed_kes` for the received view and `benefit_type` if you have it. An optional second file gives `earned_premium_kes` by `accident_month`. The page has templates and a sample file, as Excel with CSV versions beside them. At least 12 accident months (the latest 60 are used), up to 500,000 rows and 30 MB.
+- **Every step is logged.** The file's SHA-256 fingerprint, every check with the line numbers it flagged, every row left out and why, each method with its settings and result. The log downloads as a web page, alongside the results and the paid triangle as one Excel workbook (each also as CSV).
 - **One free run per network address.** Checking a file is free, and so is running the sample. Only a scrambled fingerprint of the address (a salted SHA-256 hash) and the date of the run are kept. Uploaded files stay in memory for the visit and are never saved.
 
 > [!WARNING]
@@ -199,7 +199,7 @@ source("scripts/build_results.R")   # generates the data, runs every method and 
 shiny::runApp()
 ```
 
-Tests: 30 of 30 pass (`data/test_results.csv`). Every number in this README is filled in from `data/headline.json` and `data/test_results.csv` by `scripts/render_readme.R`.
+Tests: 33 of 33 pass (`data/test_results.csv`). Every number in this README is filled in from `data/headline.json` and `data/test_results.csv` by `scripts/render_readme.R`.
 
 ## Why I built this
 

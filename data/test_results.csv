@@ -3,6 +3,9 @@ test-backlog.R,backlog scenarios leave the true ultimate unchanged,passed,1
 test-backlog.R,a 0% slowdown reproduces the base case chain ladder,passed,1
 test-backlog.R,"delayed claims are only those scheduled in the window, and pay after valuation",passed,4
 test-backlog.R,paid to date falls by exactly the delayed amount,passed,42
+test-excel.R,an Excel copy of the sample reads and runs like the CSV,passed,3
+test-excel.R,months typed as Excel dates are read as their month,passed,5
+test-excel.R,"the templates list every field, and the log is a web page",passed,5
 test-headline.R,headline.json matches a fresh recomputation from results.rds,passed,1
 test-hygiene.R,every config value has a comment,passed,2
 test-hygiene.R,no em dashes or en dashes in the repo text files,passed,1
